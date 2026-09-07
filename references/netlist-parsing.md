@@ -74,7 +74,7 @@ Cadence 的 `PIN_NUMBER` 可能是 BGA 字母数字脚号，且 `PINUSE` 与 `PI
 可能夹有其他属性；随附解析器按完整 pin block 提取，不依赖两行相邻。`pintype` 缺失或
 覆盖不足时，Rule-19 必须报告 SKIPPED/部分执行，不能把 0 命中写成通过。
 
-只要能从任意 EDA 得到 `{nets, parts, pin2net}` 三个索引，AC0/ER1–ER7 全部流程原样适用；
+最小索引只支持部分拓扑检查；完整审查还需要 pinname/物理脚/页映射、BOM 和官方条款；
 改写 `parse_*` 函数即可，其余脚本无需改动。
 
 
@@ -99,4 +99,18 @@ Cadence 的 `PIN_NUMBER` 可能是 BGA 字母数字脚号，且 `PINUSE` 与 `PI
 - KiCad：`.kicad_sch` 本身即文本（S 表达式），可直接解析；或用 `kicad-cli sch export netlist`。
 - Altium：导出 EDIF/Protel 网表，按 `(` 分组解析。
 - PADS：ASCII 网表 `*SIGNAL*` 段。
-- 只要能得到 {nets, parts, pin2net} 三个索引，AC0/ER1–ER7 全部流程原样适用。
+- 适配后按每条规则输入依赖确定覆盖范围，缺引脚名/类型/页映射不能宣称完整适配。
+
+## V2 完整性与适用范围
+
+解析器保留 `declared_pinname` / `declared_pintype`：来自符号 primitive 的完整脚表（含未连接脚），
+不是官方封装定义。必须与 `pin2net` 及官方 pinout 双向差集，解析过的引脚覆盖率不等于物理脚覆盖率。
+自检拒绝跨网重复物理脚、索引不互反、网络引用缺失器件、缺失 primitive 及导出日志 ERROR/中止。
+`--no-strict` 仅供诊断，输出 integrity.self_check_passed=false 的数据不能准出。
+缺日志仍需在输入一致性项记录，不能假定导出成功；确认是历史追加日志时分离本次导出记录另行留证。
+
+普通无层次 C_SIGNAL 不再被当伪网；仅已支持 PSTWRITER 格式的 NC 名称可被候选识别。
+没有告警或告警不在该网只能作辅助线索，不能独立证明 NC 一定不短路；遇陌生导出格式须
+对真实 NC 标签与 No-connect 属性构建小样本/读图交叉验证，再允许依赖 pseudo_nets 排除。
+DNP/DNI/DNF/NC 只按分隔词识别为不贴，不能误判 NCP1117 型号。实际装配 BOM 优先核实，
+命名未标识也不证明一定贴装。

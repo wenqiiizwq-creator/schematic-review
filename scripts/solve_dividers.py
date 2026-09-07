@@ -29,7 +29,7 @@ FB_NAMES = {
 
 
 def parse_resistor(value, default_tol=0.01):
-    """解析电阻值，返回 {'kohm', 'tol'}；支持 4K7、2.49K、0R、1M0。"""
+    """解析电阻值，返回阻值、公差及公差来源；支持 4K7、2.49K、0R、1M0。"""
     raw = str(value or '').strip()
     upper = raw.upper().replace('Ω', 'R')
     leading_unit = re.match(r'^([RKM])(\d+)', upper)
@@ -51,7 +51,8 @@ def parse_resistor(value, default_tol=0.01):
     tol = float(tol_match.group(1)) / 100.0 if tol_match else float(default_tol)
     if tol < 0 or tol >= 1:
         return None
-    return {'kohm': number * scale, 'tol': tol}
+    return {'kohm': number * scale, 'tol': tol,
+            'tolerance_source': 'value' if tol_match else 'default'}
 
 
 def r_kohm(value):
@@ -128,6 +129,7 @@ class Solver:
         self.default_tol = default_tol
         self.max_depth = max_depth
         self._ends = {}
+        self.unresolved = []
 
     def ends(self, ref):
         if ref not in self._ends:
@@ -141,7 +143,10 @@ class Solver:
             return [{'terminal': 'GND', 'segments': segments}]
         if segments and RAIL_RE.match(net):
             return [{'terminal': net, 'segments': segments}]
-        if depth >= self.max_depth or net in seen_nets:
+        if depth >= self.max_depth:
+            self.unresolved.append(f'搜索深度截断: {net}')
+            return []
+        if net in seen_nets:
             return []
         out = []
         next_seen_nets = seen_nets | {net}
@@ -157,9 +162,10 @@ class Solver:
                 continue
             parsed = parse_resistor(part.get('value'), self.default_tol)
             if not parsed:
+                self.unresolved.append(f'电阻值无法解析: {ref}')
                 continue
             other = ends[0] if ends[1] == net else ends[1]
-            segment = {'ref': ref, 'kohm': parsed['kohm'], 'tol': parsed['tol']}
+            segment = {'ref': ref, **parsed}
             out.extend(self._walk(
                 other, next_seen_nets, seen_refs | {ref},
                 segments + [segment], depth + 1))
@@ -175,7 +181,10 @@ class Solver:
 
     def solve_net(self, fbnet):
         """求解反馈节点；无法无歧义归并时返回 status=ambiguous。"""
+        self.unresolved = []
         paths = self._dedupe(self._walk(fbnet, set(), set(), [], 0))
+        if self.unresolved:
+            return {'status': 'ambiguous', 'reason': '; '.join(sorted(set(self.unresolved))), 'paths': paths}
         ground = [p for p in paths if p['terminal'] == 'GND' and p['segments']]
         upper = [p for p in paths if p['terminal'] != 'GND' and p['segments']]
         if not ground or not upper:
@@ -191,6 +200,10 @@ class Solver:
                 'reason': f'上臂连接多个电源轨: {sources}',
                 'paths': paths,
             }
+        upper_refs = {s['ref'] for p in upper for s in p['segments']}
+        lower_refs = {s['ref'] for p in ground for s in p['segments']}
+        if upper_refs & lower_refs:
+            return {'status': 'ambiguous', 'reason': '上下臂共享电阻，需节点分析', 'paths': paths}
         up, up_error = _combine_branches(upper)
         lo, lo_error = _combine_branches(ground)
         if up_error or lo_error:

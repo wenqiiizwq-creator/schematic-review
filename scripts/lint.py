@@ -9,18 +9,15 @@ AC0 Automated Check（自动检查）——机械、可穷举的规则全量扫�
         [--plan-json review-plan.json] [--json out.json]
 
 **输出是疑似清单，不是判决。** 合法结构（Bob-Smith 终端、补偿网络、
-DNP 选项、被删外设的引出脚、工具伪网络）由执行 agent 逐条排除。实践中命中
-数百条而真问题为零是常态——AC0 的职责是保证"没漏看"，不是"看对了"。
+DNP 选项、被删外设的引出脚、工具伪网络）由执行 agent 逐条排除。
+规则依赖命名和已知图结构；零命中不表示检查完整或电气通过。
 
-驱动源自动识别
+驱动源候选识别
 --------------
-Rule-04/05 判断"电源轨有无驱动"时，以下**全部**算驱动源，漏掉任何一类
-都会产生大批假"无驱动轨"：
-  - 稳压器/DCDC/LDO 的输出脚（VOUT/SW/OUT）
-  - 电感、磁珠、保险丝、二极管
-  - **0R 跳线**（配置用的直连，最容易漏）
-  - **模组自身输出的电源**（4G/WiFi 模组给出的 1.8V 电平参考等）
-  - 连接器（外部供入）
+Rule-04/05 穿过已贴装的低阻电阻、电感、磁珠或保险丝，寻找输出脚/外部连接器。
+无源桥接件本身不能供电，DNP 通路断开；二极管/MOS 方向与受控开关交 ER2 判断。
+识别到候选源仍须查物理引脚身份、端口方向、实际装配、开关状态和电源时序。
+
 """
 import argparse
 import difflib
@@ -310,27 +307,37 @@ class Lint:
             'citation': check['citation'],
         })
 
-    def driven(self, net):
-        """这条轨是否有驱动源（见模块 docstring 的五类）"""
-        for x in self.nets.get(net, []):
-            ref = x.split('.')[0]
-            v = self.parts.get(ref, {})
-            if v.get('nc'):
+    def driven(self, net, seen=None):
+        """Cold heuristic: trace passive links to a possible source, never to a jumper alone.
+        Diodes and MOSFETs need direction/operating-state evidence in ER2.
+        A positive result suppresses a candidate; it is not electrical PASS.
+        """
+        seen = set() if seen is None else seen
+        if net in seen or net in self.pseudo or len(seen) >= 128:
+            return False
+        seen.add(net)
+        for node in self.nets.get(net, []):
+            ref = node.split('.')[0]
+            part = self.parts.get(ref, {})
+            if part.get('nc'):
                 continue
-            head = re.match(r'[A-Za-z]+', ref)
-            head = head.group() if head else ''
-            if head in ('L', 'FB', 'F', 'D', 'J'):
+            match = re.match(r'[A-Za-z]+', ref)
+            head = match.group().upper() if match else ''
+            if head in ('J', 'P', 'CN'):
+                # Possible external source only; its role must be proved in ER2.
                 return True
-            if head in ('U', 'M'):
-                # 稳压器输出脚，或模组自身输出的电源脚
-                if OUTPIN_RE.match(self.pinname.get(x, '')):
-                    return True
-                if re.match(r'^(VDD_EXT|VREG|VOUT)', self.pinname.get(x, ''), re.I):
-                    return True
-            if head == 'Q':
+            if head in ('U', 'M') and re.match(
+                    r'^(VOUT|OUT|SW|VO|LX|VDD_EXT|VREG|\+VO)(?:$|[_\d])',
+                    self.pinname.get(node, ''), re.I):
                 return True
-            if head == 'R' and str(v.get('value', '')).upper().startswith('0R'):
-                return True   # 0R 跳线：最容易漏的一类驱动
+            parsed = parse_resistor(part.get('value')) if head == 'R' else None
+            passive = head in ('L', 'FB', 'F') or (
+                parsed is not None and parsed['kohm'] <= 0.001)
+            ends = self.ends(ref)
+            if passive and len(ends) == 2:
+                other = ends[0] if ends[1] == net else ends[1]
+                if other not in GNDS and self.driven(other, seen):
+                    return True
         return False
 
     # -- rules -----------------------------------------------------------
@@ -534,10 +541,13 @@ class Lint:
             elif vz < vr:
                 self.add('Rule-13', '钳位器件 Vz 低于所跨电源轨',
                          f'{ref} ({blob.strip()}) Vz/Vrwm≈{vz}V < {rail} 的 {vr}V'
-                         f' —— 上电即导通/烧毁', ref)
+                         f' —— 需核实实际轨压、器件曲线与源阻抗', ref, kind='CANDIDATE')
 
         # 导出日志：No_connect 被忽略 —— 免费证据，别丢
         if self.log:
+            for line in self.log.splitlines():
+                if re.search(r'ERROR\s*\(|Aborting Netlisting', line, re.I):
+                    self.add('INPUT-EXPORT', '网表导出错误/中止，核实是否为本次有效导出', line)
             ig = re.findall(
                 r'"No_connect" property on Pin "([^"]+)" ignored.*?net "([^"]+)"',
                 self.log)
@@ -577,7 +587,21 @@ class Lint:
                 kind='CANDIDATE', check_id=check['id'],
                 citation=check['citation'])
             return
+        assumed = sorted({segment['ref']
+                          for branch in solution['branches_up'] + solution['branches_lo']
+                          for segment in branch['segments']
+                          if segment.get('tolerance_source') == 'default'})
+        if assumed and 'resistor_tolerance' not in check:
+            self.add('Rule-08', '缺少电阻公差依据，不能验证 WCA',
+                     f"未注明公差: {', '.join(assumed)}；{self._citation(check)}",
+                     kind='CANDIDATE', check_id=check['id'], citation=check['citation'])
+            return
         vref = check['vref']
+        if not isinstance(vref, dict) or not all(k in vref for k in ('min', 'typ', 'max')):
+            self.add('Rule-08', '缺少基准全角范围，不能验证 WCA',
+                     self._citation(check), kind='CANDIDATE',
+                     check_id=check['id'], citation=check['citation'])
+            return
         if isinstance(vref, dict):
             typ = float(vref['typ'])
             minimum = float(vref.get('min', typ))
@@ -610,7 +634,7 @@ class Lint:
 
     def _hot_required_passive(self, check):
         net = self.target_net(check)
-        if not net:
+        if not net or net not in self.nets:
             self.add(
                 'Rule-09', '必需无源网络无法定位',
                 f"{check.get('node') or check.get('net')}: 无网络；"
@@ -651,13 +675,17 @@ class Lint:
 
     def _bias_result(self, check, rule):
         net = self.target_net(check)
-        if not net:
+        if not net or net not in self.nets:
             self.add(
                 rule, '目标引脚无网络',
                 f"{check.get('node') or check.get('net')}；{self._citation(check)}",
                 check_id=check['id'], citation=check['citation'])
             return False
         pulls = self.pulls(net)
+        if net in GNDS:
+            pulls.append({'ref': 'DIRECT', 'other': net, 'state': 'low', 'voltage': 0.0})
+        elif RAIL_RE.match(net) and not pulls:
+            pulls.append({'ref': 'DIRECT', 'other': net, 'state': 'high', 'voltage': _volt(net)})
         required = check.get('required_default') or check.get('required')
         states = {p['state'] for p in pulls}
         problems = []
@@ -678,6 +706,8 @@ class Lint:
                     continue
                 if pull['voltage'] is None:
                     unknown.append(f"{pull['other']} 电压未知")
+                elif states == {'high', 'low'}:
+                    unknown.append('耐压需用分压后的实际脚压，不能直接比较上拉源轨')
                 elif pull['voltage'] > float(abs_max):
                     problems.append(
                         f"{pull['ref']} 上拉 {pull['voltage']}V > Abs Max "
@@ -828,6 +858,8 @@ def main():
                    'skipped': [list(s) for s in lint.skipped],
                    'hot_executed': sorted(lint.hot_executed),
                    'hot_pending': pending,
+                   'hot_uncovered_instances': [x['id'] for x in review_plan['checks']
+                       if x.get('rule') in HOT_RULE_IDS and x['readiness'] != 'READY'],
                    'review_plan': review_plan,
                    'coverage': {
                        'pintype_available': bool(db.get('pintype')),

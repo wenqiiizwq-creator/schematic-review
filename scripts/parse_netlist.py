@@ -26,8 +26,8 @@ Cadence/OrCAD allegro 三件套 -> 结构化索引
 
 2. **伪网络**：PSTWRITER 会把"带 No-Connect 属性且无连线"的引脚
    统一塞进一张名为 NC 的网。它不是电气短路。
-   判别式：真实网络的实例行/C_SIGNAL 带层次路径 '@<设计>(SCH_1):<名>'，
-   伪网络是裸字面量。本脚本自动识别并放进 pseudo_nets。
+   启发式：仅把无层次路径、名称符合 NC 约定的汇集网列为 pseudo_nets。
+   普通扁平命名网络仍是真实网络；NC 归类须结合图面/导出器语义复核。
 """
 import argparse
 import io
@@ -40,7 +40,8 @@ import sys
 def _read(path):
     if not os.path.isfile(path):
         sys.exit(f'[FATAL] 缺少文件: {path}')
-    return io.open(path, encoding='utf-8', errors='replace').read()
+    with io.open(path, encoding='utf-8', errors='replace') as stream:
+        return stream.read()
 
 
 # --------------------------------------------------------------------------
@@ -65,18 +66,18 @@ def parse_pstxnet(text):
             state = 'want_signal'
             continue
 
-        # 网络头之后紧跟实例行与 C_SIGNAL；带 '@' 即真实网络
+        # 网络头之后紧跟实例行与 C_SIGNAL；仅标记符合 NC 约定的平面汇集网
         if state == 'want_signal':
             if s.startswith("C_SIGNAL="):
                 cur_has_hier = '@' in s
-                if not cur_has_hier and cur:
+                if not cur_has_hier and cur and re.fullmatch(r'NC[_\-\d]*', cur, re.I):
                     pseudo.append(cur)
                 state = None
                 continue
             if s.startswith("'") and not s.endswith(':;'):
                 continue
 
-        m = re.match(r'^NODE_NAME\t(\S+)\s+(\S+)\s*$', line)
+        m = re.match(r'^NODE_NAME\s+(\S+)\s+(\S+)\s*$', line)
         if m and cur:
             last = f'{m.group(1)}.{m.group(2)}'
             nets[cur].append(last)
@@ -159,7 +160,7 @@ def parse_pstxprt(text):
 
 # --------------------------------------------------------------------------
 # NC 只在被分隔符界定时才是"不贴"标记，避免 NCP1117 这类型号被误判
-_NC_MARK = re.compile(r'(?:^|[/_\-\s])NC(?:$|[/_\-\s])')
+_NC_MARK = re.compile(r'(?:^|[/_\-\s])(?:NC|DNP|DNI|DNF)(?:$|[/_\-\s])')
 
 
 def is_not_populated(prim, value):
@@ -178,6 +179,9 @@ def build(dirpath):
         for x in nds:
             pin2net[x] = n
 
+    log_path = os.path.join(dirpath, 'netlist.log')
+    export_errors = [line.strip() for line in _read(log_path).splitlines()
+                     if re.search(r'ERROR\s*\(|Aborting Netlisting', line, re.I)] if os.path.isfile(log_path) else []
     parts = {}
     for r, p in ref2prim.items():
         d = prim.get(p, {})
@@ -190,6 +194,19 @@ def build(dirpath):
             'nc': is_not_populated(p, d.get('value', '')),
         }
 
+    # Keep the symbol's full declared pin inventory, including unconnected pins.
+    # It is independent of pinname read from connected net nodes, not an official pinout.
+    declared_pinname, declared_pintype = {}, {}
+    for ref, primitive in ref2prim.items():
+        spec = prim.get(primitive, {})
+        for name, numbers in spec.get('pins', {}).items():
+            for number in re.split(r'[\s,]+', numbers.strip()):
+                if not number:
+                    continue
+                node = f'{ref}.{number}'
+                declared_pinname[node] = name
+                if name in spec.get('pinuse', {}):
+                    declared_pintype[node] = spec['pinuse'][name]
     pintype = {}
     for node, pn in pinname.items():
         p = parts.get(node.split('.')[0], {}).get('prim')
@@ -201,6 +218,10 @@ def build(dirpath):
         'nets': nets, 'pin2net': pin2net, 'pinname': pinname,
         'pintype': pintype, 'parts': parts, 'ref2page': ref2page,
         'pseudo_nets': pseudo,
+        'declared_pinname': declared_pinname,
+        'declared_pintype': declared_pintype,
+        'export_errors': export_errors,
+        'missing_primitives': sorted({p for p in ref2prim.values() if p not in prim}),
     }
 
 
@@ -210,6 +231,23 @@ def build(dirpath):
 def self_check(db, strict=True):
     problems = []
     n_pin, n_name = len(db['pin2net']), len(db['pinname'])
+    owners = {}
+    for net, nodes in db['nets'].items():
+        for node in nodes:
+            if node in owners and owners[node] != net:
+                problems.append(f'{node} 重复归网: {owners[node]} / {net}')
+            owners[node] = net
+            if db['pin2net'].get(node) != net:
+                problems.append(f'{node} nets/pin2net 不互反')
+            if node.split('.')[0] not in db['parts']:
+                problems.append(f'{node} 缺少器件实例')
+    for node, net in db['pin2net'].items():
+        if node not in db['nets'].get(net, []):
+            problems.append(f'{node} pin2net 指向不存在的网络成员')
+    if db.get('export_errors'):
+        problems.append(f"导出日志含错误/中止: {db['export_errors'][:3]}")
+    if db.get('missing_primitives'):
+        problems.append(f"缺失 primitive: {db['missing_primitives']}")
 
     if not db['nets']:
         problems.append('nets 为空 —— pstxnet.dat 格式未被识别')
@@ -230,7 +268,7 @@ def self_check(db, strict=True):
     if db['pseudo_nets']:
         for p in db['pseudo_nets']:
             print(f'  [伪网络] {p!r} 挂 {len(db["nets"].get(p, []))} 个引脚 —— '
-                  '工具生成的 No-Connect 汇集网，非电气短路，Rule-15 不应对其告警')
+                  '符合已支持格式的 No-Connect 汇集特征；准出前仍需图面/导出证据核实')
 
     if problems:
         sys.stdout.flush()
@@ -251,7 +289,7 @@ def main():
     a = ap.parse_args()
 
     db = build(a.dirpath)
-    self_check(db, strict=not a.no_strict)
+    db['integrity'] = {'self_check_passed': self_check(db, strict=not a.no_strict)}
     json.dump(db, io.open(a.out, 'w', encoding='utf-8'), ensure_ascii=False)
     print(f'  -> {a.out}')
 

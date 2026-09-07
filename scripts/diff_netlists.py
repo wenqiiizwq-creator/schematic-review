@@ -13,6 +13,8 @@ import io
 import json
 import sys
 
+from solve_dividers import parse_resistor
+
 PART_FIELDS = ('part', 'value', 'jedec', 'prim', 'nc')
 
 
@@ -91,7 +93,7 @@ def validate_claims(data):
     supported = {
         'part_added', 'part_removed', 'part_field_changed',
         'part_field_equals', 'pin_net_changed', 'pin_net_equals',
-        'net_membership_changed',
+        'net_membership_changed', 'pins_connected', 'pins_disconnected', 'net_members_equal',
     }
     seen_ids = set()
     for i, claim in enumerate(claims):
@@ -129,6 +131,8 @@ def validate_claims(data):
                 'pin_net_changed': ('node',),
                 'pin_net_equals': ('node', 'net'),
                 'net_membership_changed': ('net',),
+                'pins_connected': (), 'pins_disconnected': (),
+                'net_members_equal': ('net',),
             }[kind]
             for key in required:
                 if key == 'value':
@@ -138,6 +142,17 @@ def validate_claims(data):
                                or not check[key].strip())
                 if missing:
                     errors.append(f'{item}.{key} 缺失')
+            if kind == 'part_field_equals' and 'value' in check:
+                value = check['value']
+                valid_value = isinstance(value, bool) if check.get('field') == 'nc' else isinstance(value, str)
+                if not valid_value:
+                    errors.append(f'{item}.value 类型须匹配字段')
+            if kind in {'pins_connected', 'pins_disconnected', 'net_members_equal'}:
+                nodes = check.get('nodes')
+                if not isinstance(nodes, list) or not nodes or not all(isinstance(x, str) and x.strip() for x in nodes):
+                    errors.append(f'{item}.nodes 必须为非空引脚列表')
+                elif kind != 'net_members_equal' and len(nodes) != 2:
+                    errors.append(f'{item}.nodes 必须为两个物理引脚')
             if kind in {'part_field_changed', 'part_field_equals'} and (
                     check.get('field') not in PART_FIELDS):
                 errors.append(
@@ -152,8 +167,45 @@ def _part_field_changed(old, new, check):
     return before != after, {'old': before, 'new': after}
 
 
+def connected(db, first, second):
+    """Connectivity through same net or fitted zero-ohm links only; NC is not a wire."""
+    pins = db.get('pin2net', {})
+    pseudo = set(db.get('pseudo_nets', []))
+    source, target = pins.get(first), pins.get(second)
+    if not source or not target or source in pseudo or target in pseudo:
+        return None
+    graph = {}
+    for ref, part in db.get('parts', {}).items():
+        if not ref.startswith('R') or part.get('nc'):
+            continue
+        value = parse_resistor(part.get('value'))
+        if not value or value['kohm'] != 0:
+            continue
+        ends = {net for node, net in pins.items() if node.startswith(ref + '.')}
+        if len(ends) == 2 and not ends & pseudo:
+            a, b = sorted(ends)
+            graph.setdefault(a, set()).add(b)
+            graph.setdefault(b, set()).add(a)
+    todo, visited = [source], set()
+    while todo:
+        net = todo.pop()
+        if net == target:
+            return True
+        if net not in visited:
+            visited.add(net)
+            todo.extend(graph.get(net, set()) - visited)
+    return False
+
+
 def evaluate_expectation(old, new, check):
     kind = check['kind']
+    if kind in {'pins_connected', 'pins_disconnected'}:
+        actual = connected(new, *check['nodes'])
+        wanted = kind == 'pins_connected'
+        return actual is not None and actual == wanted, {'connected': actual, 'nodes': check['nodes']}
+    if kind == 'net_members_equal':
+        actual = sorted(new.get('nets', {}).get(check['net'], []))
+        return check['net'] in new.get('nets', {}) and actual == sorted(check['nodes']), {'actual': actual}
     if kind == 'part_added':
         ref = check['ref']
         ok = ref not in old.get('parts', {}) and ref in new.get('parts', {})
@@ -167,7 +219,8 @@ def evaluate_expectation(old, new, check):
     if kind == 'part_field_equals':
         ref, field = check['ref'], check['field']
         actual = new.get('parts', {}).get(ref, {}).get(field)
-        return actual == check.get('value'), {
+        exists = ref in new.get('parts', {}) and field in new['parts'][ref]
+        return exists and actual == check.get('value'), {
             'actual': actual, 'expected': check.get('value')}
     if kind == 'pin_net_changed':
         node = check['node']
@@ -199,11 +252,13 @@ def evaluate_claims(old, new, claims):
                 'expectation': expectation,
                 'evidence': evidence,
             })
-        passed = all(x['pass'] for x in checks)
+        substantive = any(x['kind'] not in {'part_field_changed', 'pin_net_changed', 'net_membership_changed'} for x in checks)
+        passed = all(x['pass'] for x in checks) and substantive
         result = {
             'id': claim['id'],
             'description': claim.get('description', ''),
-            'status': 'PASS' if passed else 'FAIL',
+            'status': 'PASS' if passed else ('INSUFFICIENT' if not substantive else 'FAIL'),
+            'closure_basis': 'expected state verified' if substantive else 'change alone does not prove repair',
             'checks': checks,
         }
         results.append(result)

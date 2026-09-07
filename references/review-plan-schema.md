@@ -92,7 +92,7 @@ python3 scripts/lint.py db.json \
 | `trigger` | 为什么实例化该检查项的可复现依据 |
 | `review_result` | 最终仅允许 `PASS` / `FAIL` / `INSUFFICIENT` / `NA` |
 | `evidence_confidence` | 独立证据置信度 A/B/C，不是审查结果 |
-| `handoff` | 独立下游动作，可与任一非 NA 结果并存 |
+| `handoff` | 独立下游动作，可与任一结果并存（例如原理图不适用但需下游执行） |
 
 `rule_plan[]` 给出 Rule-01～Rule-20 的规则级适用性和准备度；`checks[]` 再把
 规则或专家检查实例化到具体对象。两者分别回答“这类规则要不要跑”和“具体要审哪一项”。
@@ -131,3 +131,16 @@ python3 scripts/lint.py db.json \
 - 所有适用项均已执行或有书面接受；
 - 所有必需 handoff 已形成明确的接收方、约束和验证方法；
 - 复审时 Rule-17 的 Diff 与历史断言通过。
+
+## V2 补充
+
+`intent.requirements` 可选数组，每项必须含唯一 `id`、`text`、`citation`、`criterion`。
+例如 `{"id":"REQ-01","text":"两个用户接口","citation":"需求 A §3","criterion":"两路完整链路到连接器"}`。
+计划逐条实例化；还增加 input_consistency/requirements/chains/states/datasheets/history 六类
+覆盖审计项，以及关键器件完整物理脚差集项。详细原理图检查仍须 Agent 补齐。
+READINESS 只是“可开始该步骤”，不能由全局 datasheets.available 证明每颗器件的所有条款已齐。
+ER1 完整物理脚审计须有准确型号/封装资料；同一 IC 的一个引脚证据不能把另一个引脚标 READY。
+
+原始计划允许 review_result=null；最终结果不可为 null，另存 review-results.json 并运行
+validate_review.py，见 review-results-schema.md。热跑新计划不能覆盖人工已完成结果。
+最终适用性变更需 applicability_evidence 留痕，不保留 APPLICABLE + NA 的矛盾组合。

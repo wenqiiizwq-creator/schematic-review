@@ -48,3 +48,13 @@ part、value、jedec、prim、nc。声明结构不合法时工具直接退出，
 - net_membership_changed
 
 一条历史意见只有在其全部断言通过时才是真闭环；否则输出 Rule-17 FINDING。
+
+## V2 电气状态断言
+
+新增 `pins_connected` / `pins_disconnected`，给 `nodes: ["U1.1", "U2.2"]`：只比较同网或
+经过已贴 0Ω 的通路，不跨二极管/开关/电容；目标缺失或在伪网时不能把“查不到”当断开验证。
+新增 `net_members_equal`，给 net 和 nodes 完整列表，用于精确成员检查。
+
+只含 part_field_changed / pin_net_changed / net_membership_changed 的 claim 现在输出
+INSUFFICIENT，并在 --fail-on-open-claims 时阻断。必须增加期望状态断言；发生变化不证明修好。
+复杂功能修复还需要专项 ER 复验，简单连通断言不证明额定/方向/时序正确。

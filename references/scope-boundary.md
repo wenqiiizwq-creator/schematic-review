@@ -8,12 +8,12 @@ Layout”，不表示 PCB 已通过审查，也不表示整板可以投板生产
 | 状态 | 含义 | 对准出的影响 |
 |---|---|---|
 | PASS | 原理图与 datasheet/需求证据充分且符合 | 无 |
-| FAIL | 原理图证据已证明存在问题 | BLOCKER/Warning 按严重度处置 |
+| FAIL | 原理图证据已证明存在问题 | P0–P3 按 severity-calibration.md 处置 |
 | INSUFFICIENT | 本项适用，但缺需求、功耗或可靠来源，无法定判 | 阻断级项未补齐或未书面接受时阻断 |
 | NA | 经适用性判断后确认不适用 | 无；必须写明不适用依据 |
 
 NA 不得代替 INSUFFICIENT。A/B/C 只用于独立的 `evidence_confidence` 字段，
-其中 C 不再承担“材料不足”的结果含义。
+A/B/C 定义以 severity-calibration.md 为准；C 表示结论证据未齐，对应 INSUFFICIENT。
 
 ## 独立 HANDOFF 动作
 
@@ -35,7 +35,7 @@ NA 不得代替 INSUFFICIENT。A/B/C 只用于独立的 `evidence_confidence` �
 |---|---|
 | FINDING | 专家复核确认后为 FAIL；有反证排除后为 PASS，并保留排除依据 |
 | CANDIDATE | 判据未补齐前为 INSUFFICIENT；补齐 ER1/需求证据后转 PASS 或 FAIL |
-| 自动验证 PASS | PASS，保留 check id、计算和 citation |
+| 自动验证 PASS | 仅该输入对象和判据的候选通过，专家核实模型/覆盖后才能写最终 PASS，保留 check id、计算和 citation |
 | SKIPPED / pending | 适用但缺输入为 INSUFFICIENT；有依据确认不适用才是 NA |
 | 依赖布局、实测、结构或生产落实的要求 | 独立 HANDOFF，写接收阶段、约束和验证方法；不替换本项结果 |
 
@@ -62,10 +62,12 @@ NA 不得代替 INSUFFICIENT。A/B/C 只用于独立的 `evidence_confidence` �
 允许：
 
 - 原理图准出，可进入 PCB Layout。
-- 原理图有条件准出，须先关闭列出的关键 INSUFFICIENT 项。
-- 原理图不准出，存在 BLOCKER/未接受 Warning。
+- 原理图有条件准出：无开放 P0，已完成全部检查，剩余阻断项已有有效接受记录并落实约束。
+- 原理图不准出：存在开放 P0、未接受的阻断 FAIL/INSUFFICIENT、覆盖未完成或必需 HANDOFF 未接收。
 
 禁止：
 
 - 整板可以投板。
 - SI/PI、EMC、热、DFM 已通过（除非另有对应审查证据，本报告只作外部引用）。
+
+未关闭关键前提只能不准出，不能以“有条件准出，待后续再关闭”提前放行。接受不改变实际 PASS/FAIL。
