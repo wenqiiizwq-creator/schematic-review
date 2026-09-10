@@ -8,7 +8,9 @@ import tempfile
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 from parse_netlist import parse_pstxnet, self_check, is_not_populated, build
-from plan_review import build_review_plan, _evidence_matches, validate_intent
+from plan_review import build_review_plan, validate_intent
+from electrical_contract import check_matches
+from electrical_fixtures import bind_evidence, divider_model
 from lint import Lint
 from solve_dividers import Solver
 from diff_netlists import connected, evaluate_claims, validate_claims
@@ -47,12 +49,39 @@ class V2Regressions(unittest.TestCase):
         self.assertTrue(any(x['rule'] == 'Rule-05' for x in lint.run()))
 
     def test_trace_through_bead_and_fitted_resistor_to_source(self):
-        db = network({'R1': {'value': '0.1R'}, 'FB1': {}, 'U1': {}},
+        db = network({'R1': {'value': '0.1R'}, 'FB1': {'value': 'FERRITE'}, 'U1': {'value': 'REG'}},
                      {'VDD_A': ['R1.1'], 'MID': ['R1.2', 'FB1.1'],
                       'SOURCE': ['FB1.2', 'U1.1']}, {'U1.1': 'VOUT'})
-        self.assertTrue(Lint(db).driven('VDD_A'))
-        db['parts']['R1']['nc'] = True
         self.assertFalse(Lint(db).driven('VDD_A'))
+        intent = {'active_state': 'RUN', 'power_paths': [
+            {'ref': 'R1', 'from': 'MID', 'to': 'VDD_A', 'state': 'RUN',
+             'citation': 'Synthetic fitted 0.1 ohm sense resistor; conducting in RUN'}]}
+        self.assertTrue(Lint(db, intent=intent).driven('VDD_A'))
+        db['parts']['R1']['nc'] = True
+        self.assertFalse(Lint(db, intent=intent).driven('VDD_A'))
+
+    def test_pseudo_net_cannot_bridge_to_a_source(self):
+        db = network({'U1': {'value': 'REG'}}, {'NC': ['U1.1']}, {'U1.1': 'VOUT'})
+        db['pseudo_nets'] = ['NC']
+        self.assertFalse(Lint(db).driven('NC'))
+
+    def test_lint_preserves_export_abort_as_input_finding(self):
+        findings = Lint(sample_db(), log_text='ERROR(ORCAP-1): invalid\nAborting Netlisting').run()
+        self.assertEqual(len([x for x in findings if x['rule'] == 'INPUT-EXPORT']), 2)
+
+    def test_requirement_validation_and_state_expansion_coexist(self):
+        intent = {
+            'requirements': [{'id': 'REQ-01', 'text': 'Startup guaranteed',
+                              'criterion': 'Defined state throughout sampling', 'citation': 'SYNTHETIC REQ'}],
+            'circuits': [{'id': 'BOOT', 'domain': 'STARTUP', 'refs': ['U1'],
+                          'states': ['cold-start', 'brownout'], 'citation': 'SYNTHETIC states'}]}
+        self.assertEqual(validate_intent(intent), [])
+        plan = build_review_plan(sample_db(), intent)
+        states = {x['object']['state'] for x in plan['checks'] if x['object'].get('circuit') == 'BOOT'}
+        self.assertEqual(states, {'cold-start', 'brownout'})
+        self.assertTrue(any(x['object'].get('requirement_id') == 'REQ-01' for x in plan['checks']))
+        del intent['requirements'][0]['criterion']
+        self.assertTrue(validate_intent(intent))
 
     def test_tvs_is_not_power_source(self):
         db = network({'D1': {'value': 'TVS'}}, {'VDD_A': ['D1.1'], 'GND': ['D1.2']})
@@ -60,8 +89,8 @@ class V2Regressions(unittest.TestCase):
 
     def test_evidence_for_one_en_does_not_cover_another(self):
         evidence = {'checks': [{'rule': 'Rule-12', 'node': 'U1.1', 'ref': 'U1'}]}
-        self.assertFalse(_evidence_matches(evidence, 'Rule-12', {'node': 'U1.2', 'ref': 'U1'}))
-        self.assertTrue(_evidence_matches(evidence, 'Rule-12', {'node': 'U1.1', 'ref': 'U1'}))
+        self.assertFalse(check_matches(sample_db(), evidence['checks'][0], 'Rule-12', {'node': 'U1.2', 'ref': 'U1'}))
+        self.assertTrue(check_matches(sample_db(), evidence['checks'][0], 'Rule-12', {'node': 'U1.1', 'ref': 'U1'}))
 
     def test_requirement_and_full_pin_audits_are_planned(self):
         intent = {'requirements': [{'id': 'REQ-USB', 'text': 'USB port required',
@@ -148,16 +177,20 @@ class V2Regressions(unittest.TestCase):
         db['parts']['R1']['value'] = '20K'
         check = {'id': 'FB', 'rule': 'Rule-08', 'kind': 'divider', 'net': 'FB_NET',
                  'vref': {'min': 0.792, 'typ': 0.8, 'max': 0.808},
+                 'divider_model': divider_model(), 'depends_on': ['R1', 'R2'],
                  'expected': {'min': 2.0, 'max': 3.0}, 'citation': 'SYNTHETIC Rev.A p.1'}
-        lint = Lint(db, evidence={'checks': [check]})
-        lint.run()
-        self.assertFalse(lint.passes)
-        self.assertTrue(any(x.get('check_id') == 'FB' and x['kind'] == 'CANDIDATE'
-                            for x in lint.F))
-        check['resistor_tolerance'] = 0.01
-        lint = Lint(db, evidence={'checks': [check]})
-        lint.run()
-        self.assertTrue(any(x['check_id'] == 'FB' for x in lint.passes))
+        evidence = {'schema_version': 1, 'checks': [check]}
+        with tempfile.TemporaryDirectory() as directory:
+            audit = bind_evidence(db, evidence, directory)
+            lint = Lint(db, evidence=evidence, datasheet_audit=audit)
+            lint.run()
+            self.assertFalse(lint.passes)
+            self.assertTrue(any(x.get('check_id') == 'FB' and x['kind'] == 'CANDIDATE'
+                                for x in lint.F))
+            check['resistor_tolerance'] = 0.01
+            lint = Lint(db, evidence=evidence, datasheet_audit=audit)
+            lint.run()
+            self.assertTrue(any(x['check_id'] == 'FB' for x in lint.passes))
 
     def test_parser_keeps_symbol_pin_omitted_from_netlist(self):
         with tempfile.TemporaryDirectory() as directory:

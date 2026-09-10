@@ -12,7 +12,7 @@
 | CONDITIONAL | 条件满足后修改 | 拓扑方案已明确，参数或受控装配/资料前提未齐；给取得及判断方法 |
 | DESIGN_REQUIRED | 需要重新设计 | 架构、模式、控制脚或接口方案未确定；先列设计步骤和选择依据 |
 
-准备度与 P0–P3 严重度、证据置信度、缺陷关闭状态彼此独立。READY 不表示可以直接上电、
+准备度与 error / warning / suggestion 严重度、证据置信度、缺陷关闭状态彼此独立。READY 不表示可以直接上电、
 修改已验证或整板准出。候选参数不能用于承诺“照填即完成”；不得用 CONDITION/DESIGN
 标签逃避现有资料可完成的计算、连接核对和具体操作。
 
@@ -70,7 +70,7 @@
 
 ## 结构化字段与机器检查
 
-保持最终结果 `schema_version: 2`，新增顶层 `remediation_version: 1`。每个 finding 加：
+保持最终结果 `schema_version: 3`，新增顶层 `remediation_version: 1`。每个 finding 加：
 
 ```json
 {

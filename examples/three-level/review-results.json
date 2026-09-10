@@ -1,0 +1,645 @@
+{
+  "schema_version": 3,
+  "plan_digest": "1fd141a70761a2798e6995d56acccc2d181ad41ef3a7635e9b6eab655c335e9b",
+  "db_digest": "bf7a65fefe9a1400e30bb6b3c4e32d544bed9a3b001e51639bae18b8a8679a54",
+  "checks": [
+    {
+      "id": "chains",
+      "applicability": "APPLICABLE",
+      "review_result": "PASS",
+      "evidence_confidence": "A",
+      "evidence": [
+        {
+          "source": "synthetic-fixture.json",
+          "locator": "all values stipulated for tests"
+        }
+      ],
+      "rationale": "stipulated compliant fixture",
+      "blocking": false,
+      "handoff": {
+        "required": false
+      }
+    },
+    {
+      "id": "datasheets",
+      "applicability": "APPLICABLE",
+      "review_result": "PASS",
+      "evidence_confidence": "A",
+      "evidence": [
+        {
+          "source": "synthetic-fixture.json",
+          "locator": "all values stipulated for tests"
+        }
+      ],
+      "rationale": "stipulated compliant fixture",
+      "blocking": false,
+      "handoff": {
+        "required": false
+      }
+    },
+    {
+      "id": "history",
+      "applicability": "APPLICABLE",
+      "review_result": "PASS",
+      "evidence_confidence": "A",
+      "evidence": [
+        {
+          "source": "synthetic-fixture.json",
+          "locator": "all values stipulated for tests"
+        }
+      ],
+      "rationale": "stipulated compliant fixture",
+      "blocking": false,
+      "handoff": {
+        "required": false
+      }
+    },
+    {
+      "id": "input_consistency",
+      "applicability": "APPLICABLE",
+      "review_result": "PASS",
+      "evidence_confidence": "A",
+      "evidence": [
+        {
+          "source": "synthetic-fixture.json",
+          "locator": "all values stipulated for tests"
+        }
+      ],
+      "rationale": "stipulated compliant fixture",
+      "blocking": false,
+      "handoff": {
+        "required": false
+      }
+    },
+    {
+      "id": "requirements",
+      "applicability": "APPLICABLE",
+      "review_result": "PASS",
+      "evidence_confidence": "A",
+      "evidence": [
+        {
+          "source": "synthetic-fixture.json",
+          "locator": "all values stipulated for tests"
+        }
+      ],
+      "rationale": "stipulated compliant fixture",
+      "blocking": false,
+      "handoff": {
+        "required": false
+      }
+    },
+    {
+      "id": "states",
+      "applicability": "APPLICABLE",
+      "review_result": "PASS",
+      "evidence_confidence": "A",
+      "evidence": [
+        {
+          "source": "synthetic-fixture.json",
+          "locator": "all values stipulated for tests"
+        }
+      ],
+      "rationale": "stipulated compliant fixture",
+      "blocking": false,
+      "handoff": {
+        "required": false
+      }
+    },
+    {
+      "id": "C1",
+      "applicability": "APPLICABLE",
+      "review_result": "FAIL",
+      "evidence_confidence": "A",
+      "evidence": [
+        {
+          "source": "synthetic-fixture.json",
+          "locator": "all values stipulated for tests"
+        }
+      ],
+      "rationale": "stipulated compliant fixture",
+      "blocking": false,
+      "handoff": {
+        "required": false
+      },
+      "severity": "error",
+      "finding_id": "F-101",
+      "blocking_reason": "合成规格中的工作范围已经违反，必须修改并复验。"
+    },
+    {
+      "id": "C2",
+      "applicability": "APPLICABLE",
+      "review_result": "FAIL",
+      "evidence_confidence": "A",
+      "evidence": [
+        {
+          "source": "synthetic-fixture.json",
+          "locator": "all values stipulated for tests"
+        }
+      ],
+      "rationale": "stipulated compliant fixture",
+      "blocking": false,
+      "handoff": {
+        "required": false
+      },
+      "severity": "warning",
+      "finding_id": "F-102",
+      "blocking_reason": "合成测试规定：除error外，本项不属于当前冻结必需条件。"
+    },
+    {
+      "id": "C3",
+      "applicability": "APPLICABLE",
+      "review_result": "INSUFFICIENT",
+      "evidence_confidence": "C",
+      "evidence": [
+        {
+          "source": "synthetic-fixture.json",
+          "locator": "all values stipulated for tests"
+        }
+      ],
+      "rationale": "stipulated compliant fixture",
+      "blocking": false,
+      "handoff": {
+        "required": false
+      },
+      "severity": "warning",
+      "finding_id": "R-101",
+      "blocking_reason": "合成测试规定：除error外，本项不属于当前冻结必需条件。",
+      "missing_inputs": [
+        "受控负载上限"
+      ]
+    },
+    {
+      "id": "C4",
+      "applicability": "APPLICABLE",
+      "review_result": "FAIL",
+      "evidence_confidence": "A",
+      "evidence": [
+        {
+          "source": "synthetic-fixture.json",
+          "locator": "all values stipulated for tests"
+        }
+      ],
+      "rationale": "stipulated compliant fixture",
+      "blocking": false,
+      "handoff": {
+        "required": false
+      },
+      "severity": "suggestion",
+      "finding_id": "F-103",
+      "blocking_reason": "合成测试规定：除error外，本项不属于当前冻结必需条件。"
+    },
+    {
+      "id": "C5",
+      "applicability": "APPLICABLE",
+      "review_result": "INSUFFICIENT",
+      "evidence_confidence": "C",
+      "evidence": [
+        {
+          "source": "synthetic-fixture.json",
+          "locator": "all values stipulated for tests"
+        }
+      ],
+      "rationale": "stipulated compliant fixture",
+      "blocking": false,
+      "handoff": {
+        "required": false
+      },
+      "severity": "suggestion",
+      "finding_id": "R-102",
+      "blocking_reason": "合成测试规定：除error外，本项不属于当前冻结必需条件。",
+      "missing_inputs": [
+        "完整订货后缀与封装版本"
+      ]
+    },
+    {
+      "id": "C6",
+      "applicability": "APPLICABLE",
+      "review_result": "PASS",
+      "evidence_confidence": "A",
+      "evidence": [
+        {
+          "source": "synthetic-fixture.json",
+          "locator": "all values stipulated for tests"
+        }
+      ],
+      "rationale": "stipulated compliant fixture",
+      "blocking": false,
+      "handoff": {
+        "required": false
+      },
+      "blocking_reason": "合成测试规定：除error外，本项不属于当前冻结必需条件。"
+    }
+  ],
+  "findings": [
+    {
+      "id": "F-101",
+      "kind": "DEFECT",
+      "severity": "error",
+      "check_ids": [
+        "C1"
+      ],
+      "location": {
+        "pages": [
+          "1"
+        ],
+        "refs": [
+          "R1"
+        ],
+        "nets": [
+          "A"
+        ]
+      },
+      "title": "已证实接口电压超过保证范围",
+      "observed": "接口空载时的分析窗口为4.6至4.8V，合成接收端允许上限为3.6V；该条件由本例直接设定。",
+      "criterion": "SYN-SPEC §1：接收端工作电压不得超过3.6V。",
+      "impact": "已超出保证范围；实际损伤时间和钳位电压未由本例证明。",
+      "scenario": "源有效且输出释放时。",
+      "root_cause": "上拉所用电源与接收域不匹配。",
+      "recommendation": "synthetic evidence",
+      "verification": "synthetic evidence",
+      "severity_reason": "合成条件明确给出违规窗口，应修改后复验。",
+      "remediation": {
+        "readiness": "READY",
+        "purpose": "Restore the specified fitted pull-up.",
+        "prerequisites": [],
+        "steps": [
+          {
+            "kind": "ASSEMBLY",
+            "target": "p1 R1",
+            "before": "DNP",
+            "after": "fitted, quantity 1",
+            "instruction": "Enable R1 in configuration A and its BOM."
+          }
+        ],
+        "parameters": [
+          {
+            "target": "R1",
+            "specification": "10k, 1%, 0402, fitted",
+            "status": "SELECTED",
+            "basis": [
+              {
+                "source": "synthetic-fixture.json",
+                "locator": "all values stipulated for tests"
+              }
+            ]
+          }
+        ],
+        "related_findings": [],
+        "impact_review": "Confirm the stipulated reset load remains within its limit.",
+        "verification": [
+          {
+            "stage": "NETLIST",
+            "method": "Re-export configuration A and trace R1.",
+            "expected": "R1 is fitted between A and U1.2."
+          }
+        ]
+      }
+    },
+    {
+      "id": "F-102",
+      "kind": "DEFECT",
+      "severity": "warning",
+      "check_ids": [
+        "C2"
+      ],
+      "location": {
+        "pages": [
+          "1"
+        ],
+        "refs": [
+          "R1"
+        ],
+        "nets": [
+          "A"
+        ]
+      },
+      "title": "局部非关键指示通道未满足应用条件",
+      "observed": "合成指示输出需要外部恢复路径，但配置A未装该支路；电路只承担非关键维护指示。",
+      "criterion": "SYN-SPEC §2：本例指示通道需要外部恢复路径，不能按推挽驱动使用。",
+      "impact": "指示可能不正确；没有证据扩展为核心链路故障。",
+      "scenario": "维护指示变化时。",
+      "root_cause": "按另一种输出结构套用了外围。",
+      "recommendation": "synthetic evidence",
+      "verification": "synthetic evidence",
+      "severity_reason": "确认局部应用偏离，未证实主要链路或器件损坏后果。",
+      "remediation": {
+        "readiness": "READY",
+        "purpose": "Restore the specified fitted pull-up.",
+        "prerequisites": [],
+        "steps": [
+          {
+            "kind": "ASSEMBLY",
+            "target": "p1 R1",
+            "before": "DNP",
+            "after": "fitted, quantity 1",
+            "instruction": "Enable R1 in configuration A and its BOM."
+          }
+        ],
+        "parameters": [
+          {
+            "target": "R1",
+            "specification": "10k, 1%, 0402, fitted",
+            "status": "SELECTED",
+            "basis": [
+              {
+                "source": "synthetic-fixture.json",
+                "locator": "all values stipulated for tests"
+              }
+            ]
+          }
+        ],
+        "related_findings": [],
+        "impact_review": "Confirm the stipulated reset load remains within its limit.",
+        "verification": [
+          {
+            "stage": "NETLIST",
+            "method": "Re-export configuration A and trace R1.",
+            "expected": "R1 is fitted between A and U1.2."
+          }
+        ]
+      }
+    },
+    {
+      "id": "R-101",
+      "kind": "RISK",
+      "severity": "warning",
+      "check_ids": [
+        "C3"
+      ],
+      "location": {
+        "pages": [
+          "1"
+        ],
+        "refs": [
+          "R1"
+        ],
+        "nets": [
+          "A"
+        ]
+      },
+      "title": "已知参数裕量偏窄，尚缺动态工况",
+      "observed": "静态电压窗口距上限很近；本例没有给负载阶跃、纹波及温度边界。",
+      "criterion": "SYN-SPEC §3：输入范围必须包含动态和温度变化。",
+      "impact": "动态偏移可能使电压越窗，尚不能给出最终结论。",
+      "scenario": "负载变化或温度变化时。",
+      "root_cause": "计算仅覆盖静态模型。",
+      "recommendation": "synthetic evidence",
+      "verification": "synthetic evidence",
+      "severity_reason": "已有具体裕量风险，尚需负载与瞬态验证。",
+      "remediation": {
+        "readiness": "CONDITIONAL",
+        "purpose": "Restore the specified fitted pull-up.",
+        "prerequisites": [
+          {
+            "input": "受控负载上限",
+            "reason": "检查参数裕量",
+            "how_to_obtain": "从受控接口规格读取",
+            "acceptance": "给出适用于本配置的min/max"
+          }
+        ],
+        "steps": [
+          {
+            "kind": "ASSEMBLY",
+            "target": "p1 R1",
+            "before": "DNP",
+            "after": "fitted, quantity 1",
+            "instruction": "Enable R1 in configuration A and its BOM."
+          }
+        ],
+        "parameters": [
+          {
+            "target": "R1",
+            "specification": "10k, 1%, 0402, fitted",
+            "status": "CANDIDATE",
+            "basis": [
+              {
+                "source": "synthetic-fixture.json",
+                "locator": "all values stipulated for tests"
+              }
+            ],
+            "needed_input": "受控负载上限",
+            "selection_method": "按保证窗口和电阻公差计算，再选择标准值。"
+          }
+        ],
+        "related_findings": [],
+        "impact_review": "Confirm the stipulated reset load remains within its limit.",
+        "verification": [
+          {
+            "stage": "NETLIST",
+            "method": "Re-export configuration A and trace R1.",
+            "expected": "R1 is fitted between A and U1.2."
+          }
+        ]
+      },
+      "missing_inputs": [
+        "受控负载上限"
+      ]
+    },
+    {
+      "id": "F-103",
+      "kind": "DEFECT",
+      "severity": "suggestion",
+      "check_ids": [
+        "C4"
+      ],
+      "location": {
+        "pages": [
+          "1"
+        ],
+        "refs": [
+          "R1"
+        ],
+        "nets": [
+          "A"
+        ]
+      },
+      "title": "库字段与Value不一致，实际脚位已核一致",
+      "observed": "物料表的库字段与Value使用不同名称；本例已经规定真实物理脚映射一致。",
+      "criterion": "SYN-SPEC §4：受控物料字段应能追溯到同一完整型号。",
+      "impact": "影响后续选料和文档维护，当前没有焊盘或接线错误证据。",
+      "scenario": "更新BOM或复用器件库时。",
+      "root_cause": "库字段没有同步更新。",
+      "recommendation": "核对原始受控记录，再更新对应文档或属性。",
+      "verification": "修订文件能对应受控记录；已核实的物理脚到网络映射不变。",
+      "severity_reason": "当前仅为物料字段整理，没有实际焊盘或接线错误证据。",
+      "remediation": {
+        "readiness": "READY",
+        "purpose": "整理合成物料/文档记录",
+        "prerequisites": [],
+        "steps": [
+          {
+            "kind": "DOCUMENT",
+            "target": "合成物料表 R1",
+            "before": "对应资料未统一",
+            "after": "依据受控记录完成一致性核对",
+            "instruction": "核对完整物料、真实脚位和字段；仅在身份确认后修正文档。"
+          }
+        ],
+        "parameters": [],
+        "related_findings": [],
+        "impact_review": "Confirm the stipulated reset load remains within its limit.",
+        "verification": [
+          {
+            "stage": "DOCUMENT",
+            "method": "核对修订文档与受控记录，并比较物理脚到网络映射。",
+            "expected": "资料出处可定位且未改变已核实的电气映射。"
+          }
+        ]
+      }
+    },
+    {
+      "id": "R-102",
+      "kind": "RISK",
+      "severity": "suggestion",
+      "check_ids": [
+        "C5"
+      ],
+      "location": {
+        "pages": [
+          "1"
+        ],
+        "refs": [
+          "R1"
+        ],
+        "nets": [
+          "A"
+        ]
+      },
+      "title": "补齐完整物料及封装依据",
+      "observed": "本例未给完整订货后缀及对应封装文件；未观察到具体接线或工作范围违规。",
+      "criterion": "SYN-SPEC §5：完整物料身份与封装应有受控出处。",
+      "impact": "身份确认尚未完成；不能断言实际物料错误或电路失效。",
+      "scenario": "采购确认或封装复用时。",
+      "root_cause": "资料包缺少受控身份记录。",
+      "recommendation": "核对原始受控记录，再更新对应文档或属性。",
+      "verification": "修订文件能对应受控记录；已核实的物理脚到网络映射不变。",
+      "severity_reason": "仅缺完整物料资料；保留未知，不认定电路已失效。",
+      "remediation": {
+        "readiness": "CONDITIONAL",
+        "purpose": "整理合成物料/文档记录",
+        "prerequisites": [
+          {
+            "input": "完整订货后缀与封装版本",
+            "reason": "确认身份对应",
+            "how_to_obtain": "从合成采购规格和封装记录取得",
+            "acceptance": "完整型号、封装和资料版本一致"
+          }
+        ],
+        "steps": [
+          {
+            "kind": "DOCUMENT",
+            "target": "合成物料表 R1",
+            "before": "对应资料未统一",
+            "after": "依据受控记录完成一致性核对",
+            "instruction": "核对完整物料、真实脚位和字段；仅在身份确认后修正文档。"
+          }
+        ],
+        "parameters": [],
+        "related_findings": [],
+        "impact_review": "Confirm the stipulated reset load remains within its limit.",
+        "verification": [
+          {
+            "stage": "DOCUMENT",
+            "method": "核对修订文档与受控记录，并比较物理脚到网络映射。",
+            "expected": "资料出处可定位且未改变已核实的电气映射。"
+          }
+        ]
+      },
+      "missing_inputs": [
+        "完整订货后缀与封装版本"
+      ]
+    },
+    {
+      "id": "I-101",
+      "kind": "IMPROVEMENT",
+      "severity": "suggestion",
+      "check_ids": [
+        "C6"
+      ],
+      "location": {
+        "pages": [
+          "1"
+        ],
+        "refs": [
+          "R1"
+        ],
+        "nets": [
+          "A"
+        ]
+      },
+      "title": "清理与正确连线并存的残留属性",
+      "observed": "实际连线及工作条件已在合成设定中判定符合，仅有多余的图纸属性残留。",
+      "criterion": "SYN-SPEC §6：电气判据已满足，文档可进一步清理。",
+      "impact": "只影响图纸可读性与后续维护。",
+      "scenario": "阅读和整理图纸时。",
+      "root_cause": "旧属性未清理。",
+      "recommendation": "核对原始受控记录，再更新对应文档或属性。",
+      "verification": "修订文件能对应受控记录；已核实的物理脚到网络映射不变。",
+      "severity_reason": "已知电气判据已满足后的图纸整理。",
+      "remediation": {
+        "readiness": "READY",
+        "purpose": "整理合成物料/文档记录",
+        "prerequisites": [],
+        "steps": [
+          {
+            "kind": "DOCUMENT",
+            "target": "合成物料表 R1",
+            "before": "对应资料未统一",
+            "after": "依据受控记录完成一致性核对",
+            "instruction": "核对完整物料、真实脚位和字段；仅在身份确认后修正文档。"
+          }
+        ],
+        "parameters": [],
+        "related_findings": [],
+        "impact_review": "Confirm the stipulated reset load remains within its limit.",
+        "verification": [
+          {
+            "stage": "DOCUMENT",
+            "method": "核对修订文档与受控记录，并比较物理脚到网络映射。",
+            "expected": "资料出处可定位且未改变已核实的电气映射。"
+          }
+        ]
+      }
+    }
+  ],
+  "scope_checks": {
+    "requirements": "requirements",
+    "states": "states",
+    "input_consistency": "input_consistency",
+    "chains": "chains",
+    "history": "history",
+    "datasheets": "datasheets"
+  },
+  "coverage": {
+    "components": {
+      "R1": [
+        "C1"
+      ]
+    },
+    "pins": {
+      "R1.1": [
+        "C1"
+      ],
+      "R1.2": [
+        "C1"
+      ]
+    },
+    "nets": {
+      "A": [
+        "C1"
+      ]
+    },
+    "pages": {
+      "1": [
+        "C1"
+      ]
+    },
+    "requirements": {}
+  },
+  "remediation_version": 1,
+  "report_metadata": {
+    "title": "合成示例：三等级报告",
+    "baseline": "SYN-C Rev.1；全部数值与器件均为测试设定",
+    "scope_note": "全部事实与判据为合成设定，展示报告契约；没有真实器件参数或真实网表分析结论。"
+  }
+}

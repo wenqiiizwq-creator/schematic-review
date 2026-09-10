@@ -61,6 +61,7 @@
 python3 scripts/plan_review.py db.json \
   --intent intent.json \
   --evidence evidence.json \
+  --datasheet-audit datasheet-audit.json \
   --json review-plan.json
 ```
 
@@ -70,6 +71,7 @@ python3 scripts/plan_review.py db.json \
 python3 scripts/lint.py db.json \
   --intent intent.json \
   --evidence evidence.json \
+  --datasheet-audit datasheet-audit.json \
   --plan-json review-plan.json \
   --json lint-result.json
 ```
@@ -144,3 +146,69 @@ ER1 完整物理脚审计须有准确型号/封装资料；同一 IC 的一个�
 原始计划允许 review_result=null；最终结果不可为 null，另存 review-results.json 并运行
 validate_review.py，见 review-results-schema.md。热跑新计划不能覆盖人工已完成结果。
 最终适用性变更需 applicability_evidence 留痕，不保留 APPLICABLE + NA 的矛盾组合。
+
+## 电气扩展：电路、状态及证据依赖
+
+hot 检查的 READY 必须通过与 lint 相同的依赖函数：当前网表指纹、实际文档指纹、
+准确型号/版本/定位、依赖物料 AVAILABLE 以及该规则必要的模型输入。缺失或过期
+则 WAITING_EVIDENCE。每条匹配 evidence 生成独立 evidence_check_id 和 object.state；
+匹配时 node/net/ref 必须一致。READY 不证明求解器支持该拓扑，也不代表 PASS。
+
+功能 feature 项是 coverage_parent，只汇总覆盖。agent 应从实际电路和需求填
+intent.circuits，再按域内判据及状态展开。此扩展不声称自动识别任意电路：未声明的
+域不能据此判 NA，需检查覆盖遗漏。示例：
+
+```json
+{
+  "circuits": [{
+    "id": "INPUT-PROTECTION", "domain": "POWER_PROTECTION",
+    "refs": ["U1", "Q1", "D1", "F1"], "nets": ["VIN", "VOUT"],
+    "states": ["cold-start", "hot-plug", "output-short-retry"],
+    "citation": "Requirements Rev.B section 3; schematic page 2"
+  }]
+}
+```
+
+支持域：POWER_CONVERTER、POWER_PROTECTION、ANALOG、I2C、STARTUP、DDR、USB_C、
+CAN_RS485、CLOCK。每个具体电路、状态和判据形成独立检查，按 refs 获取各自资料，
+由 Expert Review 填公式、角点、证据、结果、意见和复验方法。无关器件缺资料不
+改变已声明电路的准备度。新增 refs 中需要曲线/额定的无源器件用 audit 的
+--require-ref 加入；不得用全局“datasheets available”掩盖逐物料缺口。
+
+电源来源与条件导通另可声明：
+
+```json
+{
+  "active_state": "external-on",
+  "power_sources": [{"node": "J1.1", "states": ["external-on"], "citation": "Input specification section 2"}],
+  "power_paths": [{"ref": "Q1", "from": "VIN", "to": "VOUT", "state": "external-on", "citation": "Gate-state and body-diode analysis Q1"}]
+}
+```
+
+sources 表示该状态的供入节点；paths 表示该状态可导通的方向，不是理想短路、
+额定载流或无压降声明。不得把未上电稳压器或端口任意标成 source 来消除告警。
+
+
+### 电源预算输入
+
+power-rail-budget 不再因 materials.datasheets/requirements 标为 available 就 READY。
+需按轨填写 power_rails，给电压/最大负载、源端最小可供电流、条件和相关物料，例：
+
+```json
+{
+  "power_rails": {
+    "VCC_3V3": {
+      "voltage_v": {"min": 3.2, "max": 3.4},
+      "load_a": {"min": 0, "max": 0.5}, "available_a_min": 1.0,
+      "refs": ["U1", "L1", "F1"], "state": "BOM B; stated Vin/load/temperature corners",
+      "citation": "Load budget Rev.B table 2 and component guaranteed ratings"
+    }
+  }
+}
+```
+
+数值是格式示例。可供电流要取限流最小值、温度降额、电感、连接路径等条件下的
+最弱保证能力；READY 仍需专家比较功率、瞬态及余量，不自动转为 PASS。
+
+逐物料审计通过 `--datasheet-audit` 传入时优先于全局材料布尔值。
+关键器件完整 pinout 检查仍需逐脚证据；AVAILABLE 只证明资料身份已核实。

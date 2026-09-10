@@ -11,7 +11,8 @@ import sys
 from validate_remediation import validate_remediation, READINESS
 
 RESULTS = {"PASS", "FAIL", "INSUFFICIENT", "NA"}
-SEVERITIES = {"P0", "P1", "P2", "P3"}
+SEVERITIES = ("error", "warning", "suggestion")
+LEGACY_SEVERITIES = ("P0", "P1", "P2", "P3")
 APPLICABILITY = {"APPLICABLE", "NOT_APPLICABLE", "UNDETERMINED"}
 SCOPE = {"input_consistency", "requirements", "chains", "states", "datasheets", "history"}
 
@@ -58,9 +59,14 @@ def validate_review(plan, report, db=None, lint_runs=None, require_actionable=Fa
     if not isinstance(plan, dict) or not isinstance(report, dict):
         return {"valid": False, "errors": ["plan/results must be objects"],
                 "release": "NO_GO", "blockers": ["invalid input"]}
-    require(report.get("schema_version") == 2, "results.schema_version must be 2")
+    version = report.get("schema_version")
+    require(type(version) is int and version in (2, 3), "results.schema_version must be 2 (legacy) or 3")
+    modern = version == 3
+    levels = SEVERITIES if modern else LEGACY_SEVERITIES
+    if modern:
+        require(not report.get("risks"), "v3 risks must be findings with kind RISK; separate risks would be unvalidated")
     remediation_version = report.get("remediation_version")
-    actionable = require_actionable or "remediation_version" in report
+    actionable = modern or require_actionable or "remediation_version" in report
     if actionable:
         require(type(remediation_version) is int and remediation_version == 1,
                 "remediation_version must be 1 for actionable instructions")
@@ -99,19 +105,29 @@ def validate_review(plan, report, db=None, lint_runs=None, require_actionable=Fa
         if result == "INSUFFICIENT":
             require(confidence == "C", f"{key}: unresolved conclusion must remain C")
             require(ids(item.get("missing_inputs")), f"{key}: missing_inputs required")
-            require(item.get("potential_severity") in tuple(SEVERITIES),
-                    f"{key}: potential_severity required")
-        if result == "FAIL":
-            require(item.get("severity") in tuple(SEVERITIES), f"{key}: invalid severity")
+            if not modern:
+                require(item.get("potential_severity") in levels,
+                        f"{key}: potential_severity required")
+        if modern:
+            require("potential_severity" not in item, f"{key}: v3 uses severity only")
+        if result == "FAIL" or (modern and result == "INSUFFICIENT"):
+            require(item.get("severity") in levels, f"{key}: invalid severity")
+            if modern:
+                require(text(item.get("blocking_reason")), f"{key}: blocking_reason required independently of severity")
+                if result == "INSUFFICIENT":
+                    require(item.get("severity") != "error", f"{key}: uncertain consequence cannot be a confirmed error")
             fid = item.get("finding_id")
-            require(text(fid) and fid in findings, f"{key}: FAIL needs finding_id")
+            require(text(fid) and fid in findings, f"{key}: {result} needs finding_id")
             if text(fid) and fid in findings:
+                if modern:
+                    require(findings[fid].get("kind") == ("DEFECT" if result == "FAIL" else "RISK"),
+                            f"{key}: finding kind does not match technical result")
                 require(findings[fid].get("severity") == item.get("severity"),
                         f"{key}: finding severity mismatch")
                 require(key in findings[fid].get("check_ids", []),
                         f"{key}: finding link is not reciprocal")
         else:
-            require(item.get("severity") is None, f"{key}: severity is only for FAIL")
+            require(item.get("severity") is None, f"{key}: severity is only for unresolved findings")
         state = item.get("disposition", "OPEN")
         require(state in ("OPEN", "FIXED_VERIFIED", "ACCEPTED", "RETRACTED"),
                 f"{key}: invalid disposition")
@@ -126,11 +142,12 @@ def validate_review(plan, report, db=None, lint_runs=None, require_actionable=Fa
             require(approval_ok, f"{key}: acceptance needs by/date/scope/reason/record")
             require(result in ("FAIL", "INSUFFICIENT"), f"{key}: acceptance cannot manufacture PASS")
             accepted = True
-        critical = item.get("severity") in ("P0", "P1") or (
-            result == "INSUFFICIENT" and item.get("potential_severity") in ("P0", "P1"))
+        critical = (item.get("severity") == "error") if modern else (
+            item.get("severity") in ("P0", "P1") or (
+            result == "INSUFFICIENT" and item.get("potential_severity") in ("P0", "P1")))
         if result in ("FAIL", "INSUFFICIENT"):
-            if item.get("severity") == "P0":
-                blockers.append(f"{key}: P0 requires verified repair")
+            if item.get("severity") == ("error" if modern else "P0"):
+                blockers.append(f"{key}: {item['severity']} requires verified repair")
             elif (critical or item.get("blocking")) and not approval_ok:
                 blockers.append(f"{key}: unresolved blocking {result}")
         h = item.get("handoff", {"required": False})
@@ -153,8 +170,10 @@ def validate_review(plan, report, db=None, lint_runs=None, require_actionable=Fa
             errors.extend(validate_remediation(fid, item.get("remediation"), set(findings)))
         elif "remediation" in item:
             require(False, f"{fid}: remediation requires top-level remediation_version")
-        require(item.get("severity") in tuple(SEVERITIES), f"{fid}: invalid severity")
-        require(item.get("kind") in ("DEFECT", "IMPROVEMENT"), f"{fid}: invalid finding kind")
+        require(item.get("severity") in levels, f"{fid}: invalid severity")
+        require(item.get("kind") in (("DEFECT", "RISK", "IMPROVEMENT") if modern else ("DEFECT", "IMPROVEMENT")), f"{fid}: invalid finding kind")
+        if modern:
+            require("potential_severity" not in item, f"{fid}: v3 uses severity only")
         require(ids(item.get("check_ids")), f"{fid}: check_ids required")
         linked = item.get("check_ids") if ids(item.get("check_ids")) else []
         require(all(x in checks for x in linked), f"{fid}: unknown check link")
@@ -167,8 +186,14 @@ def validate_review(plan, report, db=None, lint_runs=None, require_actionable=Fa
         if item.get("kind") == "DEFECT":
             require(any(checks[x].get("review_result") == "FAIL" and checks[x].get("finding_id") == fid
                         for x in linked if x in checks), f"{fid}: orphan defect")
-        else:
-            require(item.get("severity") == "P3", f"{fid}: optional improvement must be P3")
+        elif modern and item.get("kind") == "RISK":
+            require(item.get("severity") in ("warning", "suggestion"), f"{fid}: RISK requires warning or suggestion")
+            require(ids(item.get("missing_inputs")), f"{fid}: RISK requires missing_inputs")
+            require(bool(linked) and all(checks[x].get("review_result") == "INSUFFICIENT" and checks[x].get("finding_id") == fid
+                    for x in linked if x in checks), f"{fid}: RISK must reciprocally link unresolved checks")
+            require((not isinstance(item.get("remediation"), dict) or item["remediation"].get("readiness") != "READY"), f"{fid}: unresolved RISK cannot claim READY")
+        elif item.get("kind") == "IMPROVEMENT":
+            require(item.get("severity") == ("suggestion" if modern else "P3"), f"{fid}: optional improvement must use suggestion severity")
             require(all(checks[x].get("review_result") == "PASS" for x in linked if x in checks),
                     f"{fid}: improvement requires compliant underlying check")
 
@@ -237,10 +262,13 @@ def validate_review(plan, report, db=None, lint_runs=None, require_actionable=Fa
     counts = dict(Counter(x.get("review_result") for x in checks.values()
                           if isinstance(x.get("review_result"), str)))
     severity_counts = {s: sum(x.get("severity") == s and x.get("kind") == "DEFECT"
-                          for x in findings.values()) for s in sorted(SEVERITIES)}
+                          for x in findings.values()) for s in levels}
     computed = {"checks": len(checks), "results": counts,
                 "confirmed_defects": sum(severity_counts.values()), "by_severity": severity_counts,
                 "improvements": sum(x.get("kind") == "IMPROVEMENT" for x in findings.values())}
+    if modern:
+        computed.update(items=len(findings), risks=sum(x.get("kind") == "RISK" for x in findings.values()),
+                        item_severity_counts={s: sum(x.get("severity") == s for x in findings.values()) for s in levels})
     if "summary" in report:
         require(report["summary"] == computed, "summary does not match unique findings/check results")
     release = "NO_GO" if errors or blockers else ("CONDITIONAL_GO" if accepted else "GO")

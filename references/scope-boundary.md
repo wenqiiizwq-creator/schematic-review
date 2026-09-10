@@ -8,7 +8,7 @@ Layout”，不表示 PCB 已通过审查，也不表示整板可以投板生产
 | 状态 | 含义 | 对准出的影响 |
 |---|---|---|
 | PASS | 原理图与 datasheet/需求证据充分且符合 | 无 |
-| FAIL | 原理图证据已证明存在问题 | P0–P3 按 severity-calibration.md 处置 |
+| FAIL | 原理图证据已证明存在问题 | error / warning / suggestion 按 severity-calibration.md 处置 |
 | INSUFFICIENT | 本项适用，但缺需求、功耗或可靠来源，无法定判 | 阻断级项未补齐或未书面接受时阻断 |
 | NA | 经适用性判断后确认不适用 | 无；必须写明不适用依据 |
 
@@ -62,8 +62,8 @@ A/B/C 定义以 severity-calibration.md 为准；C 表示结论证据未齐，�
 允许：
 
 - 原理图准出，可进入 PCB Layout。
-- 原理图有条件准出：无开放 P0，已完成全部检查，剩余阻断项已有有效接受记录并落实约束。
-- 原理图不准出：存在开放 P0、未接受的阻断 FAIL/INSUFFICIENT、覆盖未完成或必需 HANDOFF 未接收。
+- 原理图有条件准出：无开放 error，已完成全部检查，剩余阻断项已有有效接受记录并落实约束。
+- 原理图不准出：存在开放 error、未接受的阻断 FAIL/INSUFFICIENT、覆盖未完成或必需 HANDOFF 未接收。
 
 禁止：
 

@@ -1,0 +1,64 @@
+{
+  "checks": [
+    {
+      "id": "chains",
+      "applicability": "APPLICABLE",
+      "object": {}
+    },
+    {
+      "id": "datasheets",
+      "applicability": "APPLICABLE",
+      "object": {}
+    },
+    {
+      "id": "history",
+      "applicability": "APPLICABLE",
+      "object": {}
+    },
+    {
+      "id": "input_consistency",
+      "applicability": "APPLICABLE",
+      "object": {}
+    },
+    {
+      "id": "requirements",
+      "applicability": "APPLICABLE",
+      "object": {}
+    },
+    {
+      "id": "states",
+      "applicability": "APPLICABLE",
+      "object": {}
+    },
+    {
+      "id": "C1",
+      "applicability": "APPLICABLE",
+      "object": {}
+    },
+    {
+      "id": "C2",
+      "applicability": "APPLICABLE",
+      "object": {}
+    },
+    {
+      "id": "C3",
+      "applicability": "APPLICABLE",
+      "object": {}
+    },
+    {
+      "id": "C4",
+      "applicability": "APPLICABLE",
+      "object": {}
+    },
+    {
+      "id": "C5",
+      "applicability": "APPLICABLE",
+      "object": {}
+    },
+    {
+      "id": "C6",
+      "applicability": "APPLICABLE",
+      "object": {}
+    }
+  ]
+}

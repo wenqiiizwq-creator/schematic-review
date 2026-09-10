@@ -1,11 +1,13 @@
 import pathlib
 import sys
 import unittest
+import tempfile
 
 SCRIPTS = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(SCRIPTS))
 
 from lint import Lint, _pin_class, validate_evidence
+from electrical_fixtures import bind_evidence, pin_analysis, divider_model
 
 
 def sample_db():
@@ -109,6 +111,14 @@ def divider_db():
 
 
 class LintTests(unittest.TestCase):
+    def setUp(self):
+        self.directory = tempfile.TemporaryDirectory()
+        self.addCleanup(self.directory.cleanup)
+
+    def bound_lint(self, database, evidence):
+        audit = bind_evidence(database, evidence, self.directory.name)
+        return Lint(database, intent={'expect': {}}, evidence=evidence, datasheet_audit=audit)
+
     def test_cadence_bi_pinuse_maps_to_bidirectional(self):
         self.assertEqual(_pin_class('BI'), 'BIDI')
 
@@ -158,7 +168,9 @@ class LintTests(unittest.TestCase):
     def test_pinuse_and_hot_rules_execute(self):
         evidence = hot_evidence()
         self.assertEqual(validate_evidence(evidence), [])
-        lint = Lint(sample_db(), intent={'expect': {}}, evidence=evidence)
+        evidence['checks'][0].update(vih_min_v=2.0, abs_min_v=-.3, voltage_analysis=pin_analysis(12, 12))
+        evidence['checks'][3].update(vil_max_v=0.8, voltage_analysis=pin_analysis(3.3, 3.3))
+        lint = self.bound_lint(sample_db(), evidence)
         findings = lint.run()
         rules = {item['rule'] for item in findings
                  if item['kind'] == 'FINDING'}
@@ -187,7 +199,10 @@ class LintTests(unittest.TestCase):
             ],
         }
         self.assertEqual(validate_evidence(evidence), [])
-        lint = Lint(divider_db(), intent={'expect': {}}, evidence=evidence)
+        model = divider_model('VOUT_2V4')
+        model['ignored_nodes'] = {'U10.1': 'Synthetic FB input current included in model'}
+        evidence['checks'][0]['divider_model'] = model
+        lint = self.bound_lint(divider_db(), evidence)
         findings = lint.run()
         self.assertTrue(any(x['rule'] == 'Rule-08' for x in findings))
         self.assertIn('Rule-08', lint.hot_executed)
@@ -208,11 +223,11 @@ class LintTests(unittest.TestCase):
                 'citation': 'U3 datasheet Rev.A p.4',
             }],
         }
-        lint = Lint(database, intent={'expect': {}}, evidence=evidence)
+        lint = self.bound_lint(database, evidence)
         findings = lint.run()
         self.assertTrue(any(
             item['rule'] == 'Rule-12' and item['kind'] == 'CANDIDATE'
-            and '同时存在上下拉' in item['detail']
+            and item.get('review_result') == 'INSUFFICIENT'
             for item in findings))
         self.assertFalse(any(
             item['rule'] == 'Rule-12' and item['check_id'] == 'EN-BIAS'
@@ -231,7 +246,7 @@ class LintTests(unittest.TestCase):
             }],
         }
         self.assertEqual(validate_evidence(evidence), [])
-        lint = Lint(database, intent={'expect': {}}, evidence=evidence)
+        lint = self.bound_lint(database, evidence)
         lint.run()
         self.assertTrue(any(
             item['rule'] == 'Rule-09' and item['check_id'] == 'EN-SERIES'

@@ -1,6 +1,6 @@
 # 电路原理图审查方法论
 
-> V2.1。保留文件名以兼容已有引用；完整执行入口为 [SKILL.md](../SKILL.md)。
+> V2.2。保留文件名以兼容已有引用；完整执行入口为 [SKILL.md](../SKILL.md)。
 
 ## 0. 工作分层
 
@@ -34,7 +34,9 @@ Rule-17 在复审 Diff，其余由冷/热输入决定。READY/规则执行不是
 
 读完整适用章节和 errata；正常工作范围、上下电、内部默认、模式及订货表不能省略。
 准确 MPN/封装归属优先解决，BOM 冲突可分支推进但不能认定某个字段绝对正确。
-见 [datasheet-evidence-schema.md](datasheet-evidence-schema.md)。只输入有出处的机器判据。
+按 [datasheet-resolution-schema.md](datasheet-resolution-schema.md) 审计/补齐具体物料资料，
+再按 [datasheet-evidence-schema.md](datasheet-evidence-schema.md) 绑定当前网表、准确物料及
+文档指纹。规划和热跑共用依赖校验；旧证据未绑定时保持待核，不用全局资料齐全替代。
 
 ## 5. ER2 供电与状态
 
@@ -70,7 +72,7 @@ Rule-17 在复审 Diff，其余由冷/热输入决定。READY/规则执行不是
 [severity-calibration.md](severity-calibration.md) 是唯一分级定义；结果与严重度/置信度/关闭
 状态独立。违背保证范围可确认 FAIL，不必声称一定失效；单板调通不能覆盖全温/批次。
 [report-template.md](report-template.md) 与 [review-results-schema.md](review-results-schema.md)
-规定逐项结果及机器校验。先统计唯一缺陷 ID，再计算准出，不能按 FAIL 检查行数计致命项。
+规定逐项结果及机器校验。先统计唯一缺陷 ID，再计算准出，不能按 FAIL 检查行数重复计数。
 
 复审用 [diff-claims-schema.md](diff-claims-schema.md)；字段变化只是改动，期望物理状态才是
 闭环证据。新旧网表加参考模板两套比较，沿电源/时钟/控制依赖检查变更影响与回归。

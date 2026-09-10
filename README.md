@@ -1,84 +1,94 @@
 # schematic-review
 
-面向硬件原理图首审、冻结前检查和改版复审的 Agent skill。V2.1 将需求、器件/引脚、
-链路和工况覆盖，与证据、严重度和新手可执行的修改步骤连成可追溯流程。
+面向硬件原理图首审、冻结前审查、PDF更新复审与历史意见闭环的可复用 Agent skill。
+V2.2 将逐脚/网表审查、原厂证据、工况与参数计算，整理成能按步骤修改和复验的报告。
 
-它要求 Agent 系统发现已知资料范围内的不合理设计与需求偏离，给出修改建议，并按
-**P0 致命 / P1 严重 / P2 一般 / P3 建议**分类。不能保证发现物理电路的所有未知缺陷；
-必须公开覆盖缺口，不能以零 Lint 命中代替检查，也不能找到几个问题便结束全板审查。
-结论只针对原理图冻结/进入 PCB Layout，不签署板级测试或投产。
+严重程度只用 **error / warning / suggestion**。物料二义、封装文字与Value对应、
+库字段和一般资料整理默认列suggestion；已经证实的实际焊盘/接线错误仍按电气后果判断。
+每项说明归类依据，未知后果不当成已确认故障，样机一次成功不覆盖保证范围违规。
 
-## 使用
+报告开头最多一页，PDF第2页进入详细问题。全部条目保留定位、依据、风险原因、
+旧→新连接、顺序修改、参数选择与复验；计算、覆盖、历史、交接及完整索引放在详情之后。
 
-    按 schematic-review 审查 <项目路径> 的原理图，核对需求和所有适用电路，
-    按严重度列出问题、证据和硬件新手能执行的修改步骤：定位到位号/物理脚，
-    写明旧→新连接、参数依据和验收；区分可直接修改、条件方案和重新设计，缺证据单列。
+## 使用与安装
 
-先读 [SKILL.md](SKILL.md)。完整模式需原理图 PDF、有效网表、当前装配 BOM/配置、
-需求/接口定义及相关器件资料。缺项继续完成可做检查并明确限制；只有 PDF 时可受限读图，
-不声称已完成网表全量检查。随附解析器只支持 Cadence/OrCAD 三件套，其他 EDA 需验证适配器。
-
-按所用 Agent 的技能目录安装，例如：
+将完整仓库放入 Agent 可发现的技能目录，入口是[SKILL.md](SKILL.md)：
 
     git clone https://github.com/wenqiiizwq-creator/schematic-review.git <你的skills目录>/schematic-review
 
-Python 脚本仅用标准库；读 PDF 需要现有提取/渲染工具（例如 Poppler）。安装环境依赖前先
-盘点现有资源并确认；本仓库不自动安装任何软件。
+请求示例：
 
-## 运行
+    使用 schematic-review 审查这个设计资料包，按 error、warning、suggestion 分级，
+    给出证据和可执行修改步骤。前置说明简短，完整展开全部问题与风险。
 
-在项目审查目录持久保存输入清单和产物，命令中的 scripts 路径按 skill 位置调整：
+    用新版PDF复审上一版报告，检查网表/图面是否同版，沿变更依赖复验并保留历史ID。
+
+    仅重新校准报告等级和结构，物料与字段整理归suggestion，保留技术事实和未决条件。
+
+完整网表模式使用原理图PDF、有效网表、BOM/装配配置、需求/接口定义与核心器件资料。
+缺项继续完成可做检查；仅PDF时受限读图，不声称完成机器网表全覆盖。
+随附解析器支持Cadence/OrCAD PST三件套，其它EDA需要验证适配器。
+
+## 审查与生成
+
+Python脚本仅依赖标准库。PDF读取/渲染使用环境现有工具，不能把Markdown成功当成PDF排版通过。
+项目输入、工作台账和证据存放在独立审查目录；下列scripts路径按安装位置调整：
 
     python3 scripts/parse_netlist.py <项目>/allegro -o db.json
     python3 scripts/plan_review.py db.json --intent intent.json --json review-plan.json
     python3 scripts/lint.py db.json --log <项目>/allegro/netlist.log --intent intent.json --json lint-cold.json
-    python3 scripts/lint.py db.json --intent intent.json --evidence evidence.json --plan-json review-plan-hot.json --json lint-hot.json
+    python3 scripts/audit_datasheets.py db.json --datasheet-dir <器件资料目录> --json datasheet-audit.json
+
+按[资料补取契约](references/datasheet-resolution-schema.md)核对型号/版本并补齐记录后：
+
+    python3 scripts/audit_datasheets.py db.json --datasheet-dir <器件资料目录> --resolution datasheet-resolution.json --evidence evidence.json --json datasheet-audit.json
+    python3 scripts/lint.py db.json --intent intent.json --evidence evidence.json --datasheet-audit datasheet-audit.json --plan-json review-plan-hot.json --json lint-hot.json
+
+Agent完成工程审查并填写schema_version=3的review-results.json，再校验、生成：
+
     python3 scripts/validate_review.py review-plan.json review-results.json --db db.json --lint lint-cold.json --lint lint-hot.json --require-actionable --json review-gate.json
+    python3 scripts/render_report.py review-plan.json review-results.json --db db.json --lint lint-cold.json --lint lint-hot.json --output report.md --csv issues.csv
     python3 scripts/diff_netlists.py old-db.json db.json --claims review-claims.json --json diff.json --fail-on-open-claims
+
+生成器先验证台账，按统一ID生成全部详情和三等级CSV；不自动判电气正确，也不自动从Lint生成PASS。
+PDF按[报告模板](references/report-template.md)分页、渲染并目检所有页面后交付。
+
+## 数据与兼容
+
+- 新台账schema_version=3：所有偏离、风险和改善统一放findings，severity仅三个等级，
+  每项都有归类理由和详细remediation；风险保留INSUFFICIENT与缺失输入。
+- 技术结果、证据、处理状态、阻断理由和专业交接独立于严重程度。
+  error未修复不能准出；降低等级不能自动消除阻断或把资料不足变为通过。
+- 旧schema_version=2继续按原契约校验；迁移必须逐项重评，不机械替换标签，不覆盖历史。
+- 报告生成拒绝覆盖输入台账；重建报告不代表源设计已经修改。
+- 保留逐物料资料审计、文档/网表指纹、单电路/状态计划、保守分压求解及电气检查。
+  READY、hot_executed和零命中均不等于全量通过。
+
+validate_review退出0表示台账有效，电路仍可能不满足冻结条件。
+需要冻结门时使用--require-release；结果仍需工程负责人核实。
+本skill不签署PCB布线、SI/PI、EMC、实测热或生产准出，也不承诺发现物理电路全部未知缺陷。
+
+## 可运行的合成示例
+
+    python3 scripts/validate_review.py examples/three-level/plan.json examples/three-level/review-results.json --db examples/three-level/db.json --require-actionable
+    python3 scripts/render_report.py examples/three-level/plan.json examples/three-level/review-results.json --db examples/three-level/db.json --output /tmp/review-example.md --csv /tmp/review-example.csv
     python3 -m unittest discover -s scripts/tests -v
 
-`review-results.json` 由 Agent 完成工程审查后按 schema 填写，不能从 Lint 自动造 PASS。
-validate_review 退出 0 表示台账有效，不代表板卡可准出；冻结/CI 使用 `--require-release`。
-
-## V2.1 的修改说明
-
-每项建议给目的、定位、前提、顺序操作、修改前后连接、参数状态/来源、联动及明确验收。
-新增 [修改说明规范](references/remediation-guide.md) 与结构化 `remediation` 校验，
-READY不能含待定参数，换线须列新旧端点，条件方案须说明缺什么和如何确定。
-准备度仅描述原理图编辑信息是否齐全，与严重度和整板准出分开。旧v2台账保留兼容校验。
-
-## V2.0 的主要变化
-
-- **覆盖与需求**：逐条 REQ、全物理脚双向差集、装配/状态/链路台账；一个 EN 的证据不再
-  让同 IC 另一脚变 READY；热跑输出未覆盖实例。
-- **定级**：缺陷、潜在风险、改善分开；不定区不能保证默认态，不能因样机调通降为普通建议；
-  未知后果不写成必然损坏。统计唯一缺陷 ID，与 FAIL 行数分开。
-- **机械修复**：普通平面网不再误排为 NC 伪网；重复归网/导出错误阻断；完整符号声明脚留存；
-  0Ω/磁珠须追到可能电源，不再把跳线/TVS 自身当电源；分压未知支路/截断/共享阻值不产伪解。
-- **电气判据**：纠正跨域上拉固定选高电压、检测点必须保护前、固定 ZQ 终接、RC 等于脉宽、
-  固定 MLCC 降额和 ADC 量程等于耐压的泛化；建议修改必须复算关联条件。
-- **闭环与报告**：最终 JSON 校验覆盖、证据、NA 状态、分级/位置/改法和准出；只证明“改过”
-  不能关闭意见；新增同网/已贴 0Ω 连通断言。关键证据随报告持久保存。
-
-旧 evidence/intent/diff 输入保持 schema_version=1（新增字段/断言可选）；最终结果为 v2。
-Rule-08 的 WCA 需要显式基准 min/typ/max，旧标称证据保持候选，不能默认零公差通过。
-旧报告 A=网表/B=datasheet 的来源用法和 BLOCKER/Warning/Info 需要按 V2 语义重新审核，不能机械替换标签。
+示例应得error 1项、warning 2项、suggestion 3项，台账有效但存在未修复error。
+[示例正文](examples/worked-example-industrial-gateway.md)只展示合成数据，不是器件设计依据。
 
 ## 文件导航
 
-| 入口/文件 | 用途 |
+| 文件 | 用途 |
 |---|---|
-| [coverage-protocol](references/coverage-protocol.md) | 版本、需求/对象/状态覆盖与留档 |
-| [severity-calibration](references/severity-calibration.md) | P0–P3、未知后果、证据、准出 |
-| [review-checklist](references/review-checklist.md) / [wca-formulas](references/wca-formulas.md) | 逐域检查与计算判据 |
-| [review-plan-schema](references/review-plan-schema.md) / [datasheet-evidence-schema](references/datasheet-evidence-schema.md) | 计划与热跑输入 |
-| [review-results-schema](references/review-results-schema.md) / [report-template](references/report-template.md) | 最终结果校验与分级交付 |
-| [remediation-guide](references/remediation-guide.md) | 面向新手的逐项修改步骤、参数和验收 |
-| [netlist-parsing](references/netlist-parsing.md) / [lint-rules](references/lint-rules.md) / [diff-claims-schema](references/diff-claims-schema.md) | 机械脚本边界 |
-| [scope-boundary](references/scope-boundary.md) / [methodology](references/methodology-v1.0.md) | 审查边界和方法说明 |
-| [合成示例](examples/worked-example-industrial-gateway.md) | 分级、证据和修改建议示范 |
-| scripts/tests/ | 脱敏机械回归与结果闸门测试 |
+| [SKILL.md](SKILL.md) | 完整执行入口 |
+| [分级校准](references/severity-calibration.md) | 三等级判断、误判边界与历史迁移 |
+| [报告模板](references/report-template.md) / [修改说明](references/remediation-guide.md) | 简短前言、完整细节和复验 |
+| [结果契约](references/review-results-schema.md) | v3字段、技术结果与闸门 |
+| [覆盖协议](references/coverage-protocol.md) / [审查清单](references/review-checklist.md) | 对象、状态、需求和逐域审查 |
+| [公式](references/wca-formulas.md) / [边界](references/scope-boundary.md) | 参数复算与专业交接 |
+| [资料证据](references/datasheet-evidence-schema.md) / [补取](references/datasheet-resolution-schema.md) | 型号、文档及热跑依赖 |
+| scripts/tests/ | 脱敏合成回归与结果、报告校验 |
 
-公开仓库只保存合成用例。真实客户原理图、BOM、私有手册和审查过程产物留在各项目目录。
-
-MIT License，见 [LICENSE](LICENSE)。
+公开仓库只包含通用方法、工具和合成用例。真实设计、BOM、私有资料与审查产物保留在项目目录。
+MIT License，见[LICENSE](LICENSE)。

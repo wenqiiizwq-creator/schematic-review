@@ -1,11 +1,11 @@
 ---
 name: schematic-review
-description: "审查硬件电路原理图的电气合理性和需求符合性，按严重度列出有证据的缺陷、修改建议和复验条件。用于首审、冻结前检查、改版 diff 和历史意见闭环；支持完整网表审查及明确受限的 PDF 审查。不签署 PCB 布局布线、SI/PI、EMC、实测热或生产准出。"
+description: "审查硬件电路原理图的电气合理性和需求符合性，按error、warning、suggestion列出有证据的问题、详细修改步骤和复验条件，生成简短前言的审查报告。用于首审、冻结前检查、改版 diff 和历史意见闭环；支持完整网表审查及明确受限的 PDF 审查。不签署 PCB 布局布线、SI/PI、EMC、实测热或生产准出。"
 ---
 
 # 电路原理图系统审查
 
-> V2.1｜需求追溯、对象覆盖、工况审查、严重度校准、面向新手的修改步骤与结果校验。
+> V2.2｜需求追溯、对象覆盖、工况审查、三等级校准、精简前言、面向新手的修改步骤与结果校验。
 
 目标是在给定资料、工况和原理图边界内，系统寻找连接错误、参数/额定值不合理、功能遗漏、
 要求偏离及可预见的异常状态问题，提出能执行和复验的修改建议。不能承诺发现物理电路的
@@ -34,23 +34,24 @@ description: "审查硬件电路原理图的电气合理性和需求符合性，
 | 维度 | 取值 |
 |---|---|
 | `review_result` | PASS / FAIL / INSUFFICIENT / NA |
-| 已确认缺陷 `severity` | P0 致命 / P1 严重 / P2 一般 / P3 建议 |
-| `evidence_confidence` | A 直接可复现 / B 有依据的工程推导 / C 尚缺关键证据 |
-| 待核项 `potential_severity` | 潜在后果级别，不能计入已确认缺陷数量 |
+| 全部条目 `severity` | error / warning / suggestion（仅这三个小写等级） |
+| `evidence_confidence` | A 直接可复现 / B 有依据的推导 / C 尚缺关键证据（正文用中文说明） |
 | 关闭状态 | OPEN / FIXED_VERIFIED / ACCEPTED / RETRACTED |
-| `handoff` | 独立 OPEN / ACCEPTED / VERIFIED，可与任何结果并存 |
+| `blocking` 与 `handoff` | 是否影响冻结及独立交接，不由等级自动替代 |
 
-P0：已证实的危险电气应力、损坏风险、关键安全保护失效或必需启动/核心链路断开。
-P1：必须实现的功能/性能缺失，或工作范围、启动保证、强制接口条件不满足。
-P2：局部功能、非关键裕量、测试维护或器件数据一致性的实际问题。
-P3：符合已知要求后的可选改进或不影响电气的图纸卫生。
-依据后果、暴露工况、独立保护与需求重要性定级，不能凭规则号或 must 一词定级。
-“观察/待确认”是队列，不能一律定为最低等级。PASS/FAIL 不得以 C 为依据。
+error：已证实的过压、主要功能连接错误、必需功能缺项或工作范围违规。
+warning：有具体电气风险、局部非关键应用偏离，或关键工况尚未验证。
+suggestion：物料二义、封装/Value/库字段对应、文档/资料补齐、后续阶段交接或可选改进。
+实际焊盘/连接已被证实错误时按电气影响定级，不能仅因标题含“封装”降为建议。
+逐项给归类理由；缺证不能当故障，已证实违规也不能因尚未实测就撤掉。
+新台账用schema_version=3；旧v2只用于兼容复核，不机械转换旧等级。
 
 ## 执行流程
 
 AC0 是自动候选扫描；ER1–ER7 是工程审查职责。保持依赖顺序，身份/图形疑点立即前置。
 大工程分批继续并保留进度，不缩小覆盖范围。
+将实际电路和适用状态填入 `intent.circuits`，由计划展开到单个判据；功能域仅汇总覆盖，
+不能代替各电路/状态的检查。来源、条件导通和逐轨预算格式见 review-plan-schema。
 
 ### 0. 基线、需求、工况
 
@@ -90,17 +91,26 @@ NC 汇集伪网、No-connect 属性、DNP 不贴是三件事。`nc` 是解析标
 
 先核 MPN、封装/温度/固定可调档、BOM/符号。PART/VALUE 冲突时建立身份分支，
 可按 VALUE 候选继续分析，不得认定其为实际物料。一个可信原厂文档可确认器件类别，
-库名和商城转引同一 PDF 不算两个独立证据；身份冲突必须解决。
+库名和商城转引同一 PDF 不算两个独立证据；身份冲突给出确认步骤；资料二义本身通常列suggestion，候选差异的具体电气风险另行定级。
 
 每颗关键器件读完整适用章节：引脚、Abs Max、推荐条件、电气 min/max、上掉电、默认态/
 strap、模式、应用计算、封装订货、errata；保留“文档章节→检查项”阅读记录。
-不能只读 Abs Max 或只追 AC0 命中器件。补资料先原厂，再核过型号/版本的授权分销商或
-LCSC 原厂 PDF 镜像；搜索摘要/聚合参数/兄弟型号只作线索。系列手册须订货表覆盖后缀。
+不能只读 Abs Max 或只追 AC0 命中器件。按
+[datasheet-resolution-schema.md](references/datasheet-resolution-schema.md) 先审资料包，
+缺失时完成 LCSC/立创与原厂检索，核对原厂 PDF 身份并记录补取结果。搜索摘要/聚合参数/
+兄弟型号只作线索；系列手册须订货表覆盖后缀，不能仅凭文件名判 AVAILABLE。
 
-    python3 scripts/lint.py db.json --log netlist.log --intent intent.json --evidence evidence.json --plan-json review-plan-hot.json --json lint-hot.json
+    python3 scripts/audit_datasheets.py db.json --datasheet-dir <资料目录> --json datasheet-audit.json
+
+Agent 完成资料核对/补取并写出 `datasheet-resolution.json` 后，纳入判据依赖再热跑：
+
+    python3 scripts/audit_datasheets.py db.json --datasheet-dir <资料目录> --resolution datasheet-resolution.json --evidence evidence.json --json datasheet-audit.json
+    python3 scripts/lint.py db.json --log netlist.log --intent intent.json --evidence evidence.json --datasheet-audit datasheet-audit.json --plan-json review-plan-hot.json --json lint-hot.json
 
 证据格式见 [datasheet-evidence-schema.md](references/datasheet-evidence-schema.md)。自动结果只覆盖
-输入的具体对象与判据，未覆盖实例仍待查。保存冷/热计划，不能覆盖已填的最终结果。
+输入的具体对象与判据，未覆盖实例仍待查。热跑证据须绑定当前网表/物料、装配及状态、
+文档内容指纹；关键 R/C/L/F/Y/J 的参数按需纳入依赖。资料未 AVAILABLE、指纹过期、
+公差/负载/采样模型缺失时，计划和执行均保持待核。保存冷/热计划，不能覆盖已填的最终结果。
 
 ### 4. ER2 电源树与状态
 
@@ -123,7 +133,9 @@ TX/RX、P/N、Host/Device、Source/Sink 按两端官方语义复述，查对端�
 
 读 [wca-formulas.md](references/wca-formulas.md)。先确认模型（固定/可调、内置反馈、负载效应），
 再代入实际串并联、输入/温度/负载、公差区间。可用 `scripts/solve_dividers.py`；不支持/
-截断/共享支路保持未判定。脚本默认公差、轨名电压只能作筛查假设。
+截断/共享支路保持未判定。脚本不为缺失公差生成保证窗口，轨名电压仅为检索线索。
+热跑分压模型明确源端、参考地、输入偏置及忽略支路依据；逻辑脚用采样窗口的保证电压
+比较 VIH/VIL，单个上拉存在不能代替电平、时序和掉电状态验算。
 区分设定目标与物理可达输出：LDO 的 FB 公式不代表升压能力；ADC FSR 不等于引脚耐压；
 I²C 并联上拉须算等效值、VOL/IOL、上升时间；RC 不等于复位脉宽；有 TVS 不等于防护通过。
 改频率/阻值/保护管时复算 min on-time、电感、环路、掉电和额定值，不能只修一个数字。
@@ -142,7 +154,7 @@ PCB 阻抗/间距/回流和实测约束独立 HANDOFF，边界见 [scope-boundar
 简单文字修正可用一步；多支路/控制电路给修改前后连接表或小图。参数状态与修改准备度
 必须一致；“可直接修改”仅指原理图编辑细节齐全，不表示已改、可上电或整板准出。
 按 [report-template.md](references/report-template.md) 形成报告与持久化 `review-results.json`。
-新报告设置 `remediation_version: 1`，每项包含 `remediation`；契约见
+新报告设置 `schema_version: 3`、`remediation_version: 1`，每项包含 `remediation`；契约见
 [review-results-schema.md](references/review-results-schema.md)。校验覆盖、修改说明及汇总后交付：
 
     python3 scripts/validate_review.py review-plan.json review-results.json --db db.json --lint lint-cold.json --lint lint-hot.json --require-actionable --json review-gate.json
@@ -158,6 +170,12 @@ PCB 阻抗/间距/回流和实测约束独立 HANDOFF，边界见 [scope-boundar
 
     python3 scripts/diff_netlists.py old-db.json db.json --claims review-claims.json --json diff.json --fail-on-open-claims
 
-按 P0→P3 列全部确认问题，另列高潜在严重度待核项、修改顺序、复验标准及覆盖缺口。
+开头最多一页，PDF第2页进入详细问题；不在详情前放长目录、方法论或全量清单。
+按error / warning展开已确认问题，再列未决风险，suggestion集中展示；全部保留证据和详细改法。
+计算、覆盖、历史、哈希、交接及完整索引后置。可生成Markdown与CSV，再按模板渲染检查PDF：
+
+    python3 scripts/render_report.py review-plan.json review-results.json --db db.json --output report.md --csv issues.csv
+
+只改报告时保留旧版与技术事实、未决条件；逐ID记录重新分级理由，不能视作电路已修复。
 保存输入哈希、意图、计划、结构化证据、结果、计算/关键裁图和 Diff 到项目审查目录；
 临时全文/大图可放 /tmp，最终证据不得只留 /tmp。公开仓库只放脱敏合成用例。
