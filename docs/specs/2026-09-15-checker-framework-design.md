@@ -1,7 +1,7 @@
 # 检查器框架、首批检查器与 KiCad 输入：设计
 
 > 上游历史设计记录，保留其当时的阶段名、测试数和发布状态；不作为本地执行指令。
-> 当前本地契约以SKILL.md及references为准：V2.2、schema 3、error / warning / suggestion。
+> 当前本地契约以SKILL.md及references为准：V2.3、schema 3、error / warning / suggestion。
 > 2026-09-17已从公开上游a5371bf移植；本地验证结果另存交付目录。
 
 - 日期：2026-09-15；基线提交 `c30f5ca`（327 项测试全绿）

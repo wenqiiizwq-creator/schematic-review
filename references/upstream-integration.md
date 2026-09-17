@@ -11,7 +11,7 @@
 
 ## 保留的契约
 
-- V2.2总体框架、error / warning / suggestion、schema_version=3。
+- V2.3沿用V2.2总体框架、error / warning / suggestion、schema_version=3。
 - 独立的PASS / FAIL / INSUFFICIENT / NA、置信度、blocking、HANDOFF和关闭状态。
 - 每项新手可执行的remediation，短前言和报告生成器。
 - schema 2只供历史兼容复核，不作为新报告格式。

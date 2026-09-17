@@ -1,7 +1,8 @@
 # schematic-review
 
 面向硬件原理图首审、冻结前审查、PDF更新复审与历史意见闭环的可复用 Agent skill。
-V2.2 将逐脚/网表审查、原厂证据、工况与参数计算，整理成能按步骤修改和复验的报告。
+V2.3 将逐脚/网表审查、原厂证据、工况与参数计算，整理成能按步骤修改和复验的报告，
+新增逐连接器/逐引脚 ESD 覆盖及通用 RC/LC 网络识别与有负载验算。
 
 本skill仅面向硬件原理图，不接入PCB/Gerber、布局布线、DRC或SCH-PCB跨文件审查。
 HANDOFF仅记录下游约束；[能力与自动化边界](references/capability-boundary.md)区分已有脚本、Agent工程任务和自动化缺口。
@@ -56,20 +57,24 @@ Python脚本仅依赖标准库。PDF读取/渲染使用环境现有工具，不�
 生成器先验证台账，按统一ID生成全部详情和三等级CSV；不自动判电气正确，也不自动从Lint生成PASS。
 PDF按[报告模板](references/report-template.md)分页、渲染并目检所有页面后交付。
 
-## 2026-09-17 能力更新
+## V2.3（2026-09-17）
 
-本机进一步增加两项：[逐针ESD与通用无源完整工作流](references/connector-esd-passive-workflow.md)。
+本版新增两项：[逐针ESD与通用无源完整工作流](references/connector-esd-passive-workflow.md)。
 ESD从连接器每个物理脚扫描，没有保护器件也保留缺口；RC/LC先识别并对账全部无源件，
 再用真实源/负载和参数保证区间验算截止、谐振、阻尼及频点响应，生成逐对象修改和复验任务。
 现有框架不变；完整电源树/负载枚举本次暂不扩展，PCB能力不引入。
 
-在 V2.2 三等级、schema 3、报告生成器与新手修改说明框架内，吸收 foxsheep1214 的 a5371bf：
+沿用 V2.2 的三等级、schema 3、报告生成器与新手修改说明框架，吸收 foxsheep1214 的 a5371bf：
 
 - **9类检查器与逐状态清单**：I²C拓扑、去耦、感性负载、功率开关、输入滤波、上电使能、监控看门狗、差分电平、光耦。7类新增电路检查器提供15条冷跑规则和6条保证值热算规则；名称线索只产生候选。
 - **冷/热计划合并与对象绑定**：防漏人工项、错用其他引脚/状态的结论、把总FAIL下传给未违反的窄判据。
 - **改版影响与强制复验**：输入/资料字节哈希、显式依赖及历史项处置；依赖不足时扩大到全量。复审的lint、validate_review和render_report均传相同--old-db/--old-plan，后两者加--require-revision-impact。
 - **参数与数值能力**：带条件/指纹的Vref事实复用、受限线性反馈网络角点计算；未知输入不默认补值。
 - **KiCad输入与回归语料**：分开NC、真悬空和DNP；166个冻结用例供维护回归，不代表真实整板检出率。
+
+加上本版的逐针ESD和通用无源检查器，注册表共11类。验证通过571项脚本测试（含新增41项）、
+19项评测工具测试及166个冻结电路用例；这些结果验证工具声明范围，不代表真实整板检出率。
+版本标签为 `v2.3`；结果台账仍采用 `schema_version=3`，不随skill版本号改变。
 
 详见[检查器](references/checkers.md)、[事实复用](references/datasheet-facts-schema.md)、
 [改版复验](references/revision-impact-schema.md)、[移植来源与边界](references/upstream-integration.md)。

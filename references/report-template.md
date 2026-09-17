@@ -1,4 +1,4 @@
-# 原理图审查报告模板 V2.2
+# 原理图审查报告模板 V2.3
 
 报告让设计者迅速进入可执行修改。适用于首审、PDF更新复审、历史意见闭环及仅报告改写。
 字段见[review-results-schema.md](review-results-schema.md)，
