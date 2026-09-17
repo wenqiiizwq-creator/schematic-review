@@ -1,0 +1,554 @@
+{
+  "case_count": 22,
+  "failed": 6,
+  "manifest_sha256": "de11ceed96910c349c61a586337c35aaf402ead7264269ac46d7253b90650d2f",
+  "passed": 16,
+  "results": [
+    {
+      "actual": {
+        "calculation": {
+          "max": 2.561710909090909,
+          "min": 2.2701493069306933,
+          "typ": 2.4,
+          "typ_note": "typ 为零偏置标称值；min/max 包含偏置电流"
+        },
+        "check_id": "IR01",
+        "citation": "Independent synthetic circuit: Simple divider, asymmetric signed bias",
+        "detail": "FB_TEST: Vout typ=2.4V, window=[2.27015, 2.56171]V, 要求=[2.2, 2.6]V；[IR01] Independent synthetic circuit: Simple divider, asymmetric signed bias",
+        "review_result": "PASS",
+        "rule": "Rule-08",
+        "scope": "所给反馈/监控阈值的静态分压窗口；工作余量/启动/稳定性另查",
+        "state": "synthetic populated variant; stated test operating conditions"
+      },
+      "description": "Simple divider, asymmetric signed bias",
+      "expected": {
+        "calculation": {
+          "max": 2.561710909090909,
+          "min": 2.2701493069306933,
+          "typ": 2.4
+        },
+        "review_result": "PASS"
+      },
+      "id": "IR01",
+      "passed": true,
+      "problems": []
+    },
+    {
+      "actual": {
+        "calculation": {
+          "max": 2.479090909090909,
+          "min": 2.323069306930693,
+          "typ": 2.4,
+          "typ_note": "typ 为零偏置标称值；min/max 包含偏置电流"
+        },
+        "check_id": "IR02",
+        "citation": "Independent synthetic circuit: Nominal correct, guaranteed window fails",
+        "detail": "FB_TEST: Vout typ=2.4V, window=[2.32307, 2.47909]V, 要求=[2.39, 2.41]V；[IR02] Independent synthetic circuit: Nominal correct, guaranteed window fails",
+        "kind": "FINDING",
+        "name": "分压最坏情况窗口不满足要求",
+        "page": 0,
+        "review_result": "FAIL",
+        "rule": "Rule-08",
+        "state": "synthetic populated variant; stated test operating conditions"
+      },
+      "description": "Nominal correct, guaranteed window fails",
+      "expected": {
+        "calculation": {
+          "max": 2.479090909090909,
+          "min": 2.323069306930693,
+          "typ": 2.4
+        },
+        "review_result": "FAIL"
+      },
+      "id": "IR02",
+      "passed": true,
+      "problems": []
+    },
+    {
+      "actual": {
+        "check_id": "IR03",
+        "citation": "Independent synthetic circuit: Shared upper series trunk",
+        "detail": "FB_TEST: branches share resistor(s); requires circuit analysis；[IR03] Independent synthetic circuit: Shared upper series trunk",
+        "kind": "CANDIDATE",
+        "name": "分压网络无法无歧义求解",
+        "page": 0,
+        "review_result": "INSUFFICIENT",
+        "rule": "Rule-08",
+        "state": "synthetic populated variant; stated test operating conditions"
+      },
+      "description": "Shared upper series trunk",
+      "expected": {
+        "calculation": {
+          "max": 1.8107857142857142,
+          "min": 1.6917352941176471,
+          "typ": 1.75
+        },
+        "review_result": "PASS"
+      },
+      "id": "IR03",
+      "passed": false,
+      "problems": [
+        "Decision mismatch",
+        "max: expected 1.8107857142857142, got None",
+        "min: expected 1.6917352941176471, got None",
+        "typ: expected 1.75, got None"
+      ]
+    },
+    {
+      "actual": {
+        "check_id": "IR04",
+        "citation": "Independent synthetic circuit: Shared lower return trunk and input bias",
+        "detail": "FB_TEST: FB_TEST: 递归截断或电阻回路，拓扑不完整；[IR04] Independent synthetic circuit: Shared lower return trunk and input bias",
+        "kind": "CANDIDATE",
+        "name": "分压网络无法无歧义求解",
+        "page": 0,
+        "review_result": "INSUFFICIENT",
+        "rule": "Rule-08",
+        "state": "synthetic populated variant; stated test operating conditions"
+      },
+      "description": "Shared lower return trunk and input bias",
+      "expected": {
+        "calculation": {
+          "max": 2.8445272727272726,
+          "min": 2.5981128712871286,
+          "typ": 2.7
+        },
+        "review_result": "PASS"
+      },
+      "id": "IR04",
+      "passed": false,
+      "problems": [
+        "Decision mismatch",
+        "max: expected 2.8445272727272726, got None",
+        "min: expected 2.5981128712871286, got None",
+        "typ: expected 2.7, got None"
+      ]
+    },
+    {
+      "actual": {
+        "check_id": "IR05",
+        "citation": "Independent synthetic circuit: Unbalanced mesh with signed input bias",
+        "detail": "FB_TEST: 上下臂共享电阻，需要节点分析；[IR05] Independent synthetic circuit: Unbalanced mesh with signed input bias",
+        "kind": "CANDIDATE",
+        "name": "分压网络无法无歧义求解",
+        "page": 0,
+        "review_result": "INSUFFICIENT",
+        "rule": "Rule-08",
+        "state": "synthetic populated variant; stated test operating conditions"
+      },
+      "description": "Unbalanced mesh with signed input bias",
+      "expected": {
+        "calculation": {
+          "max": 1.5360795581885573,
+          "min": 1.3977814418741645,
+          "typ": 1.45
+        },
+        "review_result": "PASS"
+      },
+      "id": "IR05",
+      "passed": false,
+      "problems": [
+        "Decision mismatch",
+        "max: expected 1.5360795581885573, got None",
+        "min: expected 1.3977814418741645, got None",
+        "typ: expected 1.45, got None"
+      ]
+    },
+    {
+      "actual": {
+        "check_id": "IR06",
+        "citation": "Independent synthetic circuit: Mesh nominal passes but tolerance window fails",
+        "detail": "FB_TEST: 上下臂共享电阻，需要节点分析；[IR06] Independent synthetic circuit: Mesh nominal passes but tolerance window fails",
+        "kind": "CANDIDATE",
+        "name": "分压网络无法无歧义求解",
+        "page": 0,
+        "review_result": "INSUFFICIENT",
+        "rule": "Rule-08",
+        "state": "synthetic populated variant; stated test operating conditions"
+      },
+      "description": "Mesh nominal passes but tolerance window fails",
+      "expected": {
+        "calculation": {
+          "max": 1.4816226148216063,
+          "min": 1.4190766363821736,
+          "typ": 1.45
+        },
+        "review_result": "FAIL"
+      },
+      "id": "IR06",
+      "passed": false,
+      "problems": [
+        "Decision mismatch",
+        "max: expected 1.4816226148216063, got None",
+        "min: expected 1.4190766363821736, got None",
+        "typ: expected 1.45, got None"
+      ]
+    },
+    {
+      "actual": {
+        "check_id": "IR07",
+        "citation": "Independent synthetic circuit: Large negative input current reverses resistor sensitivity",
+        "detail": "FB_TEST: 上下臂共享电阻，需要节点分析；[IR07] Independent synthetic circuit: Large negative input current reverses resistor sensitivity",
+        "kind": "CANDIDATE",
+        "name": "分压网络无法无歧义求解",
+        "page": 0,
+        "review_result": "INSUFFICIENT",
+        "rule": "Rule-08",
+        "state": "synthetic populated variant; stated test operating conditions"
+      },
+      "description": "Large negative input current reverses resistor sensitivity",
+      "expected": {
+        "calculation": {
+          "max": 0.8284106752297264,
+          "min": 0.3478076923076923,
+          "typ": 1.45
+        },
+        "review_result": "FAIL"
+      },
+      "id": "IR07",
+      "passed": false,
+      "problems": [
+        "Decision mismatch",
+        "max: expected 0.8284106752297264, got None",
+        "min: expected 0.3478076923076923, got None",
+        "typ: expected 1.45, got None"
+      ]
+    },
+    {
+      "actual": {
+        "check_id": "IR08",
+        "citation": "Independent synthetic circuit: Six internal nodes, three row resistor grid",
+        "detail": "FB_TEST: FB_TEST: 递归截断或电阻回路，拓扑不完整；[IR08] Independent synthetic circuit: Six internal nodes, three row resistor grid",
+        "kind": "CANDIDATE",
+        "name": "分压网络无法无歧义求解",
+        "page": 0,
+        "review_result": "INSUFFICIENT",
+        "rule": "Rule-08",
+        "state": "synthetic populated variant; stated test operating conditions"
+      },
+      "description": "Six internal nodes, three row resistor grid",
+      "expected": {
+        "calculation": {
+          "max": 2.73,
+          "min": 2.67,
+          "typ": 2.7
+        },
+        "review_result": "PASS"
+      },
+      "id": "IR08",
+      "passed": false,
+      "problems": [
+        "Decision mismatch",
+        "max: expected 2.73, got None",
+        "min: expected 2.67, got None",
+        "typ: expected 2.7, got None"
+      ]
+    },
+    {
+      "actual": {
+        "calculation": {
+          "max": 2.479090909090909,
+          "min": 2.323069306930693,
+          "typ": 2.4,
+          "typ_note": "typ 为零偏置标称值；min/max 包含偏置电流"
+        },
+        "check_id": "IR09",
+        "citation": "Independent synthetic circuit: DNP 1 ohm shunt must not load feedback",
+        "detail": "FB_TEST: Vout typ=2.4V, window=[2.32307, 2.47909]V, 要求=[2.2, 2.6]V；[IR09] Independent synthetic circuit: DNP 1 ohm shunt must not load feedback",
+        "review_result": "PASS",
+        "rule": "Rule-08",
+        "scope": "所给反馈/监控阈值的静态分压窗口；工作余量/启动/稳定性另查",
+        "state": "synthetic populated variant; stated test operating conditions"
+      },
+      "description": "DNP 1 ohm shunt must not load feedback",
+      "expected": {
+        "calculation": {
+          "max": 2.479090909090909,
+          "min": 2.323069306930693,
+          "typ": 2.4
+        },
+        "review_result": "PASS"
+      },
+      "id": "IR09",
+      "passed": true,
+      "problems": []
+    },
+    {
+      "actual": {
+        "check_id": "IR10",
+        "citation": "Independent synthetic circuit: Only source arm is DNP",
+        "detail": "FB_TEST: 未找到完整的上臂和下臂；[IR10] Independent synthetic circuit: Only source arm is DNP",
+        "kind": "CANDIDATE",
+        "name": "分压网络无法无歧义求解",
+        "page": 0,
+        "review_result": "INSUFFICIENT",
+        "rule": "Rule-08",
+        "state": "synthetic populated variant; stated test operating conditions"
+      },
+      "description": "Only source arm is DNP",
+      "expected": {
+        "review_result": "INSUFFICIENT"
+      },
+      "id": "IR10",
+      "passed": true,
+      "problems": []
+    },
+    {
+      "actual": {
+        "check_id": "IR11",
+        "citation": "Independent synthetic circuit: Missing upper resistor tolerance",
+        "detail": "FB_TEST: 电阻公差缺失；[IR11] Independent synthetic circuit: Missing upper resistor tolerance",
+        "kind": "CANDIDATE",
+        "name": "分压网络无法无歧义求解",
+        "page": 0,
+        "review_result": "INSUFFICIENT",
+        "rule": "Rule-08",
+        "state": "synthetic populated variant; stated test operating conditions"
+      },
+      "description": "Missing upper resistor tolerance",
+      "expected": {
+        "review_result": "INSUFFICIENT"
+      },
+      "id": "IR11",
+      "passed": true,
+      "problems": []
+    },
+    {
+      "actual": {
+        "check_id": "IR12",
+        "citation": "Independent synthetic circuit: Missing loaded bridge resistor tolerance",
+        "detail": "FB_TEST: 上下臂共享电阻，需要节点分析；[IR12] Independent synthetic circuit: Missing loaded bridge resistor tolerance",
+        "kind": "CANDIDATE",
+        "name": "分压网络无法无歧义求解",
+        "page": 0,
+        "review_result": "INSUFFICIENT",
+        "rule": "Rule-08",
+        "state": "synthetic populated variant; stated test operating conditions"
+      },
+      "description": "Missing loaded bridge resistor tolerance",
+      "expected": {
+        "review_result": "INSUFFICIENT"
+      },
+      "id": "IR12",
+      "passed": true,
+      "problems": []
+    },
+    {
+      "actual": {
+        "check_id": "IR13",
+        "citation": "Independent synthetic circuit: Third power rail",
+        "detail": "FB_TEST: VDD_AUX_5V: 未声明的电源/参考边界；[IR13] Independent synthetic circuit: Third power rail",
+        "kind": "CANDIDATE",
+        "name": "分压网络无法无歧义求解",
+        "page": 0,
+        "review_result": "INSUFFICIENT",
+        "rule": "Rule-08",
+        "state": "synthetic populated variant; stated test operating conditions"
+      },
+      "description": "Third power rail",
+      "expected": {
+        "review_result": "INSUFFICIENT"
+      },
+      "id": "IR13",
+      "passed": true,
+      "problems": []
+    },
+    {
+      "actual": {
+        "check_id": "IR14",
+        "citation": "Independent synthetic circuit: Separate reference domain",
+        "detail": "FB_TEST: AGND: 未声明的电源/参考边界；[IR14] Independent synthetic circuit: Separate reference domain",
+        "kind": "CANDIDATE",
+        "name": "分压网络无法无歧义求解",
+        "page": 0,
+        "review_result": "INSUFFICIENT",
+        "rule": "Rule-08",
+        "state": "synthetic populated variant; stated test operating conditions"
+      },
+      "description": "Separate reference domain",
+      "expected": {
+        "review_result": "INSUFFICIENT"
+      },
+      "id": "IR14",
+      "passed": true,
+      "problems": []
+    },
+    {
+      "actual": {
+        "check_id": "IR15",
+        "citation": "Independent synthetic circuit: MOSFET cannot be waived with ignore prose",
+        "detail": "FB_TEST: Q1.1: 未建模的非电阻支路/输入负载；[IR15] Independent synthetic circuit: MOSFET cannot be waived with ignore prose",
+        "kind": "CANDIDATE",
+        "name": "分压网络无法无歧义求解",
+        "page": 0,
+        "review_result": "INSUFFICIENT",
+        "rule": "Rule-08",
+        "state": "synthetic populated variant; stated test operating conditions"
+      },
+      "description": "MOSFET cannot be waived with ignore prose",
+      "expected": {
+        "review_result": "INSUFFICIENT"
+      },
+      "id": "IR15",
+      "passed": true,
+      "problems": []
+    },
+    {
+      "actual": {
+        "check_id": "IR16",
+        "citation": "Independent synthetic circuit: Nonlinear diode clamp",
+        "detail": "FB_TEST: D1.1: 未建模的非电阻支路/输入负载；[IR16] Independent synthetic circuit: Nonlinear diode clamp",
+        "kind": "CANDIDATE",
+        "name": "分压网络无法无歧义求解",
+        "page": 0,
+        "review_result": "INSUFFICIENT",
+        "rule": "Rule-08",
+        "state": "synthetic populated variant; stated test operating conditions"
+      },
+      "description": "Nonlinear diode clamp",
+      "expected": {
+        "review_result": "INSUFFICIENT"
+      },
+      "id": "IR16",
+      "passed": true,
+      "problems": []
+    },
+    {
+      "actual": {
+        "check_id": "IR17",
+        "citation": "Independent synthetic circuit: Unknown critical resistance",
+        "detail": "FB_TEST: R1: 电阻值无法解析；[IR17] Independent synthetic circuit: Unknown critical resistance",
+        "kind": "CANDIDATE",
+        "name": "分压网络无法无歧义求解",
+        "page": 0,
+        "review_result": "INSUFFICIENT",
+        "rule": "Rule-08",
+        "state": "synthetic populated variant; stated test operating conditions"
+      },
+      "description": "Unknown critical resistance",
+      "expected": {
+        "review_result": "INSUFFICIENT"
+      },
+      "id": "IR17",
+      "passed": true,
+      "problems": []
+    },
+    {
+      "actual": {
+        "check_id": "IR18",
+        "citation": "Independent synthetic circuit: Vref has nominal only",
+        "detail": "Vref 缺少保证 min/max，禁止以 typ 代替",
+        "kind": "CANDIDATE",
+        "name": "热跑证据/模型尚未就绪",
+        "page": 0,
+        "required_inputs": [
+          "Vref 缺少保证 min/max，禁止以 typ 代替"
+        ],
+        "review_result": "INSUFFICIENT",
+        "rule": "Rule-08",
+        "state": "synthetic populated variant; stated test operating conditions"
+      },
+      "description": "Vref has nominal only",
+      "expected": {
+        "review_result": "INSUFFICIENT"
+      },
+      "id": "IR18",
+      "passed": true,
+      "problems": []
+    },
+    {
+      "actual": {
+        "check_id": "IR19",
+        "citation": "Independent synthetic circuit: Feedback shorted to ground by zero ohms",
+        "detail": "FB_TEST: zero/invalid equivalent resistance；[IR19] Independent synthetic circuit: Feedback shorted to ground by zero ohms",
+        "kind": "CANDIDATE",
+        "name": "分压网络无法无歧义求解",
+        "page": 0,
+        "review_result": "INSUFFICIENT",
+        "rule": "Rule-08",
+        "state": "synthetic populated variant; stated test operating conditions"
+      },
+      "description": "Feedback shorted to ground by zero ohms",
+      "expected": {
+        "review_result": "INSUFFICIENT"
+      },
+      "id": "IR19",
+      "passed": true,
+      "problems": []
+    },
+    {
+      "actual": {
+        "calculation": {
+          "max": 2.479090909090909,
+          "min": 2.323069306930693,
+          "typ": 2.4,
+          "typ_note": "typ 为零偏置标称值；min/max 包含偏置电流"
+        },
+        "check_id": "IR20",
+        "citation": "Independent synthetic circuit: Open ended passive stub has zero DC current",
+        "detail": "FB_TEST: Vout typ=2.4V, window=[2.32307, 2.47909]V, 要求=[2.2, 2.6]V；[IR20] Independent synthetic circuit: Open ended passive stub has zero DC current",
+        "review_result": "PASS",
+        "rule": "Rule-08",
+        "scope": "所给反馈/监控阈值的静态分压窗口；工作余量/启动/稳定性另查",
+        "state": "synthetic populated variant; stated test operating conditions"
+      },
+      "description": "Open ended passive stub has zero DC current",
+      "expected": {
+        "calculation": {
+          "max": 2.479090909090909,
+          "min": 2.323069306930693,
+          "typ": 2.4
+        },
+        "review_result": "PASS"
+      },
+      "id": "IR20",
+      "passed": true,
+      "problems": []
+    },
+    {
+      "actual": {
+        "check_id": "IR21",
+        "citation": "Independent synthetic circuit: Missing bias-current bounds",
+        "detail": "反馈输入偏置电流范围缺失（正号表示流入 IC）",
+        "kind": "CANDIDATE",
+        "name": "热跑证据/模型尚未就绪",
+        "page": 0,
+        "required_inputs": [
+          "反馈输入偏置电流范围缺失（正号表示流入 IC）"
+        ],
+        "review_result": "INSUFFICIENT",
+        "rule": "Rule-08",
+        "state": "synthetic populated variant; stated test operating conditions"
+      },
+      "description": "Missing bias-current bounds",
+      "expected": {
+        "review_result": "INSUFFICIENT"
+      },
+      "id": "IR21",
+      "passed": true,
+      "problems": []
+    },
+    {
+      "actual": {
+        "check_id": "IR22",
+        "citation": "Independent synthetic circuit: FB pin not explicitly bound to load model",
+        "detail": "FB_TEST: U1.1: 未建模的非电阻支路/输入负载；[IR22] Independent synthetic circuit: FB pin not explicitly bound to load model",
+        "kind": "CANDIDATE",
+        "name": "分压网络无法无歧义求解",
+        "page": 0,
+        "review_result": "INSUFFICIENT",
+        "rule": "Rule-08",
+        "state": "synthetic populated variant; stated test operating conditions"
+      },
+      "description": "FB pin not explicitly bound to load model",
+      "expected": {
+        "review_result": "INSUFFICIENT"
+      },
+      "id": "IR22",
+      "passed": true,
+      "problems": []
+    }
+  ],
+  "runner_sha256": "ef8d4f088212431070679e291841ff3d433bb574122f8c95c148af75dfd6990e",
+  "source": "/private/tmp/codex-work/schematic-optimize.2Xfcdr/before"
+}

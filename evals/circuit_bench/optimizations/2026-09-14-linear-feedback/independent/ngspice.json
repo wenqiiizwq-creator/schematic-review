@@ -1,0 +1,248 @@
+{
+  "manifest_sha256": "de11ceed96910c349c61a586337c35aaf402ead7264269ac46d7253b90650d2f",
+  "max_feedback_error_v": 5.551115123125783e-16,
+  "passed": 30,
+  "probe_count": 30,
+  "results": [
+    {
+      "feedback_error_v": 1.1102230246251565e-16,
+      "id": "IR01-min",
+      "imposed_output_v": 2.2701493069306933,
+      "measured_feedback_v": 0.5940000000000001,
+      "passed": true,
+      "required_feedback_v": 0.594
+    },
+    {
+      "feedback_error_v": 0.0,
+      "id": "IR01-typ",
+      "imposed_output_v": 2.4,
+      "measured_feedback_v": 0.6,
+      "passed": true,
+      "required_feedback_v": 0.6
+    },
+    {
+      "feedback_error_v": 0.0,
+      "id": "IR01-max",
+      "imposed_output_v": 2.561710909090909,
+      "measured_feedback_v": 0.606,
+      "passed": true,
+      "required_feedback_v": 0.606
+    },
+    {
+      "feedback_error_v": 1.1102230246251565e-16,
+      "id": "IR02-min",
+      "imposed_output_v": 2.323069306930693,
+      "measured_feedback_v": 0.5940000000000001,
+      "passed": true,
+      "required_feedback_v": 0.594
+    },
+    {
+      "feedback_error_v": 0.0,
+      "id": "IR02-typ",
+      "imposed_output_v": 2.4,
+      "measured_feedback_v": 0.6,
+      "passed": true,
+      "required_feedback_v": 0.6
+    },
+    {
+      "feedback_error_v": 0.0,
+      "id": "IR02-max",
+      "imposed_output_v": 2.479090909090909,
+      "measured_feedback_v": 0.606,
+      "passed": true,
+      "required_feedback_v": 0.606
+    },
+    {
+      "feedback_error_v": 1.1102230246251565e-16,
+      "id": "IR03-min",
+      "imposed_output_v": 1.6917352941176471,
+      "measured_feedback_v": 0.6929999999999998,
+      "passed": true,
+      "required_feedback_v": 0.693
+    },
+    {
+      "feedback_error_v": 0.0,
+      "id": "IR03-typ",
+      "imposed_output_v": 1.75,
+      "measured_feedback_v": 0.7,
+      "passed": true,
+      "required_feedback_v": 0.7
+    },
+    {
+      "feedback_error_v": 0.0,
+      "id": "IR03-max",
+      "imposed_output_v": 1.8107857142857142,
+      "measured_feedback_v": 0.707,
+      "passed": true,
+      "required_feedback_v": 0.707
+    },
+    {
+      "feedback_error_v": 1.1102230246251565e-16,
+      "id": "IR04-min",
+      "imposed_output_v": 2.5981128712871286,
+      "measured_feedback_v": 0.8909999999999999,
+      "passed": true,
+      "required_feedback_v": 0.891
+    },
+    {
+      "feedback_error_v": 1.1102230246251565e-16,
+      "id": "IR04-typ",
+      "imposed_output_v": 2.7,
+      "measured_feedback_v": 0.8999999999999999,
+      "passed": true,
+      "required_feedback_v": 0.9
+    },
+    {
+      "feedback_error_v": 1.1102230246251565e-16,
+      "id": "IR04-max",
+      "imposed_output_v": 2.8445272727272726,
+      "measured_feedback_v": 0.9089999999999999,
+      "passed": true,
+      "required_feedback_v": 0.909
+    },
+    {
+      "feedback_error_v": 1.1102230246251565e-16,
+      "id": "IR05-min",
+      "imposed_output_v": 1.3977814418741645,
+      "measured_feedback_v": 0.6434999999999998,
+      "passed": true,
+      "required_feedback_v": 0.6435
+    },
+    {
+      "feedback_error_v": 0.0,
+      "id": "IR05-typ",
+      "imposed_output_v": 1.45,
+      "measured_feedback_v": 0.65,
+      "passed": true,
+      "required_feedback_v": 0.65
+    },
+    {
+      "feedback_error_v": 1.1102230246251565e-16,
+      "id": "IR05-max",
+      "imposed_output_v": 1.5360795581885573,
+      "measured_feedback_v": 0.6564999999999999,
+      "passed": true,
+      "required_feedback_v": 0.6565
+    },
+    {
+      "feedback_error_v": 1.1102230246251565e-16,
+      "id": "IR06-min",
+      "imposed_output_v": 1.4190766363821736,
+      "measured_feedback_v": 0.6434999999999998,
+      "passed": true,
+      "required_feedback_v": 0.6435
+    },
+    {
+      "feedback_error_v": 0.0,
+      "id": "IR06-typ",
+      "imposed_output_v": 1.45,
+      "measured_feedback_v": 0.65,
+      "passed": true,
+      "required_feedback_v": 0.65
+    },
+    {
+      "feedback_error_v": 1.1102230246251565e-16,
+      "id": "IR06-max",
+      "imposed_output_v": 1.4816226148216063,
+      "measured_feedback_v": 0.6564999999999999,
+      "passed": true,
+      "required_feedback_v": 0.6565
+    },
+    {
+      "feedback_error_v": 1.1102230246251565e-16,
+      "id": "IR07-min",
+      "imposed_output_v": 0.3478076923076923,
+      "measured_feedback_v": 0.6435000000000001,
+      "passed": true,
+      "required_feedback_v": 0.6435
+    },
+    {
+      "feedback_error_v": 0.0,
+      "id": "IR07-typ",
+      "imposed_output_v": 1.45,
+      "measured_feedback_v": 0.65,
+      "passed": true,
+      "required_feedback_v": 0.65
+    },
+    {
+      "feedback_error_v": 0.0,
+      "id": "IR07-max",
+      "imposed_output_v": 0.8284106752297264,
+      "measured_feedback_v": 0.6565,
+      "passed": true,
+      "required_feedback_v": 0.6565
+    },
+    {
+      "feedback_error_v": 4.440892098500626e-16,
+      "id": "IR08-min",
+      "imposed_output_v": 2.67,
+      "measured_feedback_v": 0.8899999999999996,
+      "passed": true,
+      "required_feedback_v": 0.89
+    },
+    {
+      "feedback_error_v": 5.551115123125783e-16,
+      "id": "IR08-typ",
+      "imposed_output_v": 2.7,
+      "measured_feedback_v": 0.8999999999999995,
+      "passed": true,
+      "required_feedback_v": 0.9
+    },
+    {
+      "feedback_error_v": 3.3306690738754696e-16,
+      "id": "IR08-max",
+      "imposed_output_v": 2.73,
+      "measured_feedback_v": 0.9099999999999997,
+      "passed": true,
+      "required_feedback_v": 0.91
+    },
+    {
+      "feedback_error_v": 1.1102230246251565e-16,
+      "id": "IR09-min",
+      "imposed_output_v": 2.323069306930693,
+      "measured_feedback_v": 0.5940000000000001,
+      "passed": true,
+      "required_feedback_v": 0.594
+    },
+    {
+      "feedback_error_v": 0.0,
+      "id": "IR09-typ",
+      "imposed_output_v": 2.4,
+      "measured_feedback_v": 0.6,
+      "passed": true,
+      "required_feedback_v": 0.6
+    },
+    {
+      "feedback_error_v": 0.0,
+      "id": "IR09-max",
+      "imposed_output_v": 2.479090909090909,
+      "measured_feedback_v": 0.606,
+      "passed": true,
+      "required_feedback_v": 0.606
+    },
+    {
+      "feedback_error_v": 0.0,
+      "id": "IR20-min",
+      "imposed_output_v": 2.323069306930693,
+      "measured_feedback_v": 0.594,
+      "passed": true,
+      "required_feedback_v": 0.594
+    },
+    {
+      "feedback_error_v": 0.0,
+      "id": "IR20-typ",
+      "imposed_output_v": 2.4,
+      "measured_feedback_v": 0.6,
+      "passed": true,
+      "required_feedback_v": 0.6
+    },
+    {
+      "feedback_error_v": 0.0,
+      "id": "IR20-max",
+      "imposed_output_v": 2.479090909090909,
+      "measured_feedback_v": 0.606,
+      "passed": true,
+      "required_feedback_v": 0.606
+    }
+  ]
+}

@@ -1,60 +1,51 @@
 # 改版网表 Diff 与历史意见闭环
 
-先分别解析旧版和新版网表，再运行：
-
-    python3 scripts/diff_netlists.py old-db.json new-db.json \
-      --claims review-claims.json --json diff.json --fail-on-open-claims
-
-Diff 自动列出器件新增/删除/字段变化、引脚换网和网络成员变化。工具伪网络默认不参与
-网络成员 Diff，但引脚从伪 NC 转入真实网络等变化仍会出现在 pin change 中。
+按 [SKILL.md](../SKILL.md) 的复审步骤解析旧/新网表并运行 Diff。输出器件新增/删除/字段变化、
+引脚换网和网络成员变化；伪网络不参与成员 Diff，但引脚从伪 NC 转入真实网络仍保留变化记录。
 
 ## 闭环断言格式
 
-claim id 必须唯一；ref/node/net/field 等定位字段必须完整，字段名仅允许
-part、value、jedec、prim、nc。声明结构不合法时工具直接退出，不进入闭环判定。
+claim id 唯一；ref/node/net/field 等定位字段完整。器件字段仅允许 part、value、jedec、prim、nc；
+nc 的期望值为布尔值，其余为字符串。结构不合法时直接退出，不进入判定。
 
-    {
-      "schema_version": 1,
-      "claims": [
-        {
-          "id": "F-05",
-          "description": "U10 器件档位已改为 RTL8326BI",
-          "expect": [
-            {"kind": "part_field_changed", "ref": "U10", "field": "part"},
-            {
-              "kind": "part_field_equals",
-              "ref": "U10",
-              "field": "part",
-              "value": "RTL8326BI"
-            }
-          ]
-        },
-        {
-          "id": "F-07",
-          "description": "U3.8 已从 3V3 上拉改到下拉网络",
-          "expect": [
-            {"kind": "pin_net_changed", "node": "U3.8"},
-            {"kind": "pin_net_equals", "node": "U3.8", "net": "BOOT0_PD"}
-          ]
-        }
-      ]
-    }
+下例全部为合成设定：U3.9 已由引脚表核实为地，旧上拉 R40 停贴；R41 以 10K 1% 贴装，
+两端分别连接 U3.8 与 U3.9。实际项目须用当前数据库的准确值字符串和装配 BOM，并核查全部支路。
 
-支持的 kind：
+```json
+{
+  "schema_version": 1,
+  "claims": [{
+    "id": "F-07",
+    "description": "旧上拉 R40 停贴，R41 的贴装、阻值及下拉两端符合指定修改",
+    "expect": [
+      {"kind": "part_field_equals", "ref": "R40", "field": "nc", "value": true},
+      {"kind": "part_field_equals", "ref": "R41", "field": "nc", "value": false},
+      {"kind": "part_field_equals", "ref": "R41", "field": "value", "value": "10K 1%"},
+      {"kind": "pins_connected", "nodes": ["U3.8", "R41.1"]},
+      {"kind": "pins_connected", "nodes": ["R41.2", "U3.9"]},
+      {"kind": "pins_disconnected", "nodes": ["R41.1", "R41.2"]}
+    ]
+  }]
+}
+```
 
-- part_added / part_removed
-- part_field_changed / part_field_equals
-- pin_net_changed / pin_net_equals
-- net_membership_changed
+最后一条仅排除跨 R41 的同网/已贴 0Ω 旁路，不能排除任意阻性或有源支路。
+上述断言证明指定编辑的结构状态；仍须复算内部拉阻、漏电、全部外部支路、采样门限和时序，
+将专项 ER 复验证据关联 F-07 后才可关闭功能问题，不能从网名或换线推断低电平已保证。
 
-一条历史意见只有在其全部断言通过时才是真闭环；否则输出 Rule-17 FINDING。
+## 支持的断言及边界
 
-## V2 电气状态断言
+- `part_added` / `part_removed`：核对指定器件新增或删除。
+- `part_field_changed` / `part_field_equals`：核对字段变化或期望值。
+- `pin_net_changed` / `pin_net_equals`：核对物理脚换网或指定网络归属，不证明该网的电气作用。
+- `net_membership_changed`：核对网络成员变化。
+- `pins_connected` / `pins_disconnected`：`nodes` 必须是两个物理脚，只比较同网或已贴 0Ω
+  通路；不跨非零电阻、二极管、开关或电容。目标缺失/处于伪网不能证明断开。
+- `net_members_equal`：给 net 和完整 nodes 列表，核对准确成员。
 
-新增 `pins_connected` / `pins_disconnected`，给 `nodes: ["U1.1", "U2.2"]`：只比较同网或
-经过已贴 0Ω 的通路，不跨二极管/开关/电容；目标缺失或在伪网时不能把“查不到”当断开验证。
-新增 `net_members_equal`，给 net 和 nodes 完整列表，用于精确成员检查。
+全部断言通过才报告该 claim 的 PASS；否则输出 Rule-17 FINDING。仅含字段/换网/成员变化的
+claim 为 INSUFFICIENT，并在 `--fail-on-open-claims` 时阻断；必须补期望状态断言。
+Diff 的 PASS 只覆盖声明的状态，不代替额定、方向、时序和其他受影响电路的工程复验。
 
-只含 part_field_changed / pin_net_changed / net_membership_changed 的 claim 现在输出
-INSUFFICIENT，并在 --fail-on-open-claims 时阻断。必须增加期望状态断言；发生变化不证明修好。
-复杂功能修复还需要专项 ER 复验，简单连通断言不证明额定/方向/时序正确。
+具体复验范围由计划的 [改版影响清单](revision-impact-schema.md) 关联并校验；原有结构
+Diff/断言仍独立保留。未发现结构差异不能排除装配意图、判据或资料内容变化。

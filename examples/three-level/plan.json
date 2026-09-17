@@ -3,62 +3,98 @@
     {
       "id": "chains",
       "applicability": "APPLICABLE",
-      "object": {}
+      "object": {},
+      "criterion": "合成夹具已声明 chains 维度的范围与缺口；不代表真实电气通过。"
     },
     {
       "id": "datasheets",
       "applicability": "APPLICABLE",
-      "object": {}
+      "object": {},
+      "criterion": "合成夹具已声明 datasheets 维度的范围与缺口；不代表真实电气通过。"
     },
     {
       "id": "history",
       "applicability": "APPLICABLE",
-      "object": {}
+      "object": {},
+      "criterion": "合成夹具已声明 history 维度的范围与缺口；不代表真实电气通过。"
     },
     {
       "id": "input_consistency",
       "applicability": "APPLICABLE",
-      "object": {}
+      "object": {},
+      "criterion": "合成夹具已声明 input_consistency 维度的范围与缺口；不代表真实电气通过。"
     },
     {
       "id": "requirements",
       "applicability": "APPLICABLE",
-      "object": {}
+      "object": {},
+      "criterion": "合成夹具已声明 requirements 维度的范围与缺口；不代表真实电气通过。"
     },
     {
       "id": "states",
       "applicability": "APPLICABLE",
-      "object": {}
+      "object": {},
+      "criterion": "合成夹具已声明 states 维度的范围与缺口；不代表真实电气通过。"
     },
     {
       "id": "C1",
       "applicability": "APPLICABLE",
-      "object": {}
+      "object": {
+        "ref": "R1",
+        "net": "A",
+        "state": "SYNTHETIC_ONLY"
+      },
+      "criterion": "SYN-SPEC §1：接收端工作电压不得超过3.6V。"
     },
     {
       "id": "C2",
       "applicability": "APPLICABLE",
-      "object": {}
+      "object": {
+        "ref": "R1",
+        "net": "A",
+        "state": "SYNTHETIC_ONLY"
+      },
+      "criterion": "SYN-SPEC §2：本例指示通道需要外部恢复路径，不能按推挽驱动使用。"
     },
     {
       "id": "C3",
       "applicability": "APPLICABLE",
-      "object": {}
+      "object": {
+        "ref": "R1",
+        "net": "A",
+        "state": "SYNTHETIC_ONLY"
+      },
+      "criterion": "SYN-SPEC §3：输入范围必须包含动态和温度变化。"
     },
     {
       "id": "C4",
       "applicability": "APPLICABLE",
-      "object": {}
+      "object": {
+        "ref": "R1",
+        "net": "A",
+        "state": "SYNTHETIC_ONLY"
+      },
+      "criterion": "SYN-SPEC §4：受控物料字段应能追溯到同一完整型号。"
     },
     {
       "id": "C5",
       "applicability": "APPLICABLE",
-      "object": {}
+      "object": {
+        "ref": "R1",
+        "net": "A",
+        "state": "SYNTHETIC_ONLY"
+      },
+      "criterion": "SYN-SPEC §5：完整物料身份与封装应有受控出处。"
     },
     {
       "id": "C6",
       "applicability": "APPLICABLE",
-      "object": {}
+      "object": {
+        "ref": "R1",
+        "net": "A",
+        "state": "SYNTHETIC_ONLY"
+      },
+      "criterion": "SYN-SPEC §6：电气判据已满足，文档可进一步清理。"
     }
   ]
 }

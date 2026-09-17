@@ -21,6 +21,7 @@ import os
 import re
 import sys
 from collections import Counter
+from electrical_contract import load_json
 
 
 REQUIRED_REF_RE = re.compile(r'^(U|M|Q|D)\d', re.I)
@@ -512,11 +513,14 @@ def main():
         help='仍有 NEEDS_VERIFICATION/MISSING/NOT_FOUND 时退出码为 2')
     args = parser.parse_args()
 
-    db = json.load(io.open(args.db, encoding='utf-8'))
-    resolution = None
+    try:
+        db = load_json(args.db)
+        resolution = load_json(args.resolution) if args.resolution else None
+        evidence = load_json(args.evidence) if args.evidence else None
+    except (OSError, ValueError) as error:
+        parser.error(str(error))
     resolution_base = os.curdir
     if args.resolution:
-        resolution = json.load(io.open(args.resolution, encoding='utf-8'))
         resolution_base = os.path.dirname(os.path.abspath(args.resolution))
         errors = validate_resolution(resolution, resolution_base)
         if errors:
@@ -525,8 +529,6 @@ def main():
     required_refs = set(args.require_ref)
     if args.evidence:
         from electrical_contract import dependency_refs
-        with open(args.evidence, encoding='utf-8') as stream:
-            evidence = json.load(stream)
         for check in evidence.get('checks', []):
             required_refs.update(dependency_refs(db, check))
     try:

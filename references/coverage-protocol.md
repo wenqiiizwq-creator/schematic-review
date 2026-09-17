@@ -69,7 +69,7 @@ datasheet 台账按“MPN/封装→文档修订→适用章节→提取限值/�
 
 ## 留档
 
-项目审查目录保留 `input-manifest.json`、`intent.json`、`db.json`、冷/热计划、
+项目审查目录保留 `input-manifest.json`、`intent.json`、`db.json`、冷跑计划快照及合并后的最终计划、
 `evidence.json`、lint、`review-results.json`、`review-gate.json`、计算、关键图形证据及复审 Diff。
 临时 OCR/大图可在 /tmp；最终结论的唯一证据不能随临时目录消失。不要把客户原图、BOM、
 私有手册、人员姓名或项目路径复制到公开 skill 仓库，用最小脱敏 fixture 做回归。

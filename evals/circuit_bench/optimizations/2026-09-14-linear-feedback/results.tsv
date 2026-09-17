@@ -1,0 +1,5 @@
+timestamp	commit	skill	old_score	new_score	status	dimension	note	eval_mode
+2026-09-14	2aeaee5	schematic-review	-	158	baseline	case_pass_count_166	dataset_and_protocol_frozen; runtime_warn=0	full_test
+2026-09-14	uncommitted-v1	schematic-review	158	166	rework	linear_feedback	independent_review_blocked_float_false_PASS_and_dependency_gap; not_installed	full_test
+2026-09-14	uncommitted-v2	schematic-review	-	-	rework	linear_feedback	independent_21_of_22; malformed_endpoint_regression; not_installed	full_test
+2026-09-14	uncommitted-v3	schematic-review	158	166	keep	linear_feedback	independent_22_of_22; safety_17_of_17; all_blockers_closed; no_commit_or_push	full_test

@@ -192,11 +192,17 @@ class ReviewPlanTests(unittest.TestCase):
         self.assertEqual(rule17['applicability'], 'APPLICABLE')
         self.assertEqual(rule17['readiness'], 'WAITING_EVIDENCE')
         self.assertEqual(rule17['required_inputs'],
-                         ['old_db', 'review_claims'])
+                         ['missing-old-db', 'missing-old-plan', 'old_db', 'review_claims'])
+
+        # Availability booleans cannot stand in for actual revision inputs.
+        flags_only = build_review_plan(sample_db(), review_mode='revision',
+            old_db_available=True, claims_available=True)
+        self.assertEqual(next(r for r in flags_only['rule_plan'] if r['rule'] == 'Rule-17')['readiness'],
+                         'WAITING_EVIDENCE')
 
         ready = build_review_plan(
             sample_db(), review_mode='revision',
-            old_db_available=True, claims_available=True)
+            old_db=sample_db(), old_plan=build_review_plan(sample_db()), claims_available=True)
         rule17 = next(item for item in ready['rule_plan']
                       if item['rule'] == 'Rule-17')
         self.assertEqual(rule17['readiness'], 'READY')

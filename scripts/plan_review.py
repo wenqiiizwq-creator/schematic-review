@@ -12,13 +12,18 @@ PASS/FAIL。HANDOFF 是独立下游动作，可以与后续 PASS/FAIL/INSUFFICIE
 """
 import argparse
 from copy import deepcopy
-from electrical_contract import db_fingerprint, check_matches, readiness_gaps, validate_evidence, bounded, finite
+from electrical_contract import db_fingerprint, check_matches, readiness_gaps, validate_evidence, bounded, finite, load_json
 import io
 import json
 import os
 import re
 import sys
 from collections import Counter
+from checkers import (REGISTRY, REGISTRY_BY_ID, registry_cold_rules,
+                      registry_hot_rules)
+from checkers.netgraph import GNDS, RAIL_RE
+from checkers.planutil import empty_handoff as _empty_handoff, handoff as _handoff, slug as _slug
+from revision_impact import attach_metadata, digest as revision_digest, validate_declarations
 
 from audit_datasheets import (
     datasheet_audit_all_available,
@@ -32,10 +37,6 @@ READINESS = ('READY', 'WAITING_EVIDENCE', 'NOT_SCHEDULED')
 RESULT_STATUSES = ('PASS', 'FAIL', 'INSUFFICIENT', 'NA')
 HANDOFF_STATES = ('OPEN', 'ACCEPTED', 'VERIFIED')
 
-GNDS = {'GND', 'PGND', 'AGND', 'DGND', 'EGND'}
-RAIL_RE = re.compile(
-    r'^(VCC|VDD|VDDA|VCCA|VOUT|VBAT|AVDD|DVDD|VIN|VBUS|V\d|[0-9]+V)',
-    re.I)
 EN_RE = re.compile(
     r'(^|_)(EN|ENABLE|SHDN|SHUTDOWN|PWREN|PWR_EN)(_|\d|$)', re.I)
 STRAP_RE = re.compile(
@@ -352,6 +353,9 @@ def validate_intent(intent):
                 if rid in seen:
                     errors.append(f'requirement id 重复: {rid}')
                 seen.add(rid)
+    for checker in REGISTRY:
+        errors.extend(checker.validate_intent(intent, None))
+    errors.extend(validate_declarations(intent))
     return errors
 
 
@@ -360,27 +364,6 @@ def _material_available(intent, key, datasheet_audit=None):
         return datasheet_audit_all_available(datasheet_audit)
     item = (intent or {}).get('materials', {}).get(key, {})
     return isinstance(item, dict) and item.get('available') is True
-
-
-def _slug(value):
-    value = re.sub(r'[^A-Za-z0-9]+', '-', str(value or '').upper()).strip('-')
-    return value[:64] or 'GLOBAL'
-
-
-def _empty_handoff():
-    return {'required': False, 'state': None}
-
-
-def _handoff(config, applicable):
-    if not config.get('required') or applicable != 'APPLICABLE':
-        return _empty_handoff()
-    return {
-        'required': True,
-        'state': 'OPEN',
-        'receivers': list(config.get('receivers', [])),
-        'constraint': config.get('constraint', ''),
-        'verification': config.get('verification', ''),
-    }
 
 
 def _database_blobs(db):
@@ -421,17 +404,25 @@ def _differential_pairs(db):
 
 
 class ReviewPlanner:
+    circuit_checks = CIRCUIT_CHECKS
+
     def __init__(self, db, intent=None, evidence=None, review_mode=None,
                  old_db_available=False, claims_available=False,
-                 datasheet_audit=None):
+                 datasheet_audit=None, previous_plan=None, old_db=None, old_plan=None):
         self.db = db
+        self.inventories = {checker.id: checker.build(db, intent) for checker in REGISTRY}
+        self.i2c_topology = self.inventories['i2c_topology']
+        self.decoupling = self.inventories['decoupling']
         self.db_sha256 = db_fingerprint(db)
         self.intent = intent or {}
         self.evidence = evidence or {}
         self.datasheet_audit = datasheet_audit
+        self.previous_plan = previous_plan
+        self.old_db, self.old_plan = old_db, old_plan
         self.review_mode = (
-            review_mode or self.intent.get('review_mode') or 'first')
-        self.old_db_available = old_db_available
+            review_mode or self.intent.get('review_mode') or
+            ('revision' if old_db is not None or old_plan is not None else 'first'))
+        self.old_db_available = old_db_available or old_db is not None
         self.claims_available = claims_available
         self.checks = []
         self.rule_plan = []
@@ -479,6 +470,10 @@ class ReviewPlanner:
         }
         matches = self.matching_evidence(rule, obj) if executor == 'AC0-HOT' else []
         if matches:
+            # Retain the cold check as a coverage parent; state children carry the individual verdicts.
+            item['role'] = 'coverage_parent'
+            item['aggregation'] = '逐状态子检查完成后汇总，不能替代子项结果'
+            self.checks.append(item)
             for evidence in matches:
                 child = deepcopy(item)
                 child_base = child['id'] + '.' + _slug(evidence['id'])
@@ -489,6 +484,9 @@ class ReviewPlanner:
                 child['id'] = child_id
                 self._ids.add(child_id)
                 child['evidence_check_id'] = evidence['id']
+                child['parent_check_id'] = item['id']
+                child.pop('role', None)
+                child.pop('aggregation', None)
                 child['object']['state'] = (evidence.get('basis') or {}).get('state')
                 gaps = readiness_gaps(self.db, evidence, self.datasheet_audit, self.db_sha256)
                 child['readiness'] = 'WAITING_EVIDENCE' if gaps else 'READY'
@@ -529,6 +527,9 @@ class ReviewPlanner:
                 'handoff': {'required': False},
             })
             hits = _feature_hits(self.db, config['pattern'])
+            if name == 'I2C' and any(b['origin'] != 'name-hint'
+                    for s in self.i2c_topology['states'] for b in s['buses']):
+                hits.append('declared I2C physical bus/port mapping')
             item = explicit.get(name)
             requested = item.get('applicability') if item else None
             trigger = [f'netlist:{x}' for x in hits]
@@ -603,6 +604,21 @@ class ReviewPlanner:
                     item['domain'] = domain
                     item['analysis_required'] = True
                     item['scope'] = '原理图电气条件；PCB/实测验证另建 HANDOFF'
+
+    def plan_checkers(self):
+        """遍历检查器注册表；每个检查器只生成自己的计划项。"""
+        for checker in REGISTRY:
+            inventory = self.inventories.get(checker.id)
+            if inventory is not None:
+                checker.plan(self, inventory)
+
+    def plan_i2c_topology(self):
+        """兼容入口：单独生成 I²C 连接覆盖计划项。"""
+        REGISTRY_BY_ID['i2c_topology'].plan(self, self.inventories['i2c_topology'])
+
+    def plan_decoupling(self):
+        """兼容入口：单独生成去耦计划项。"""
+        REGISTRY_BY_ID['decoupling'].plan(self, self.inventories['decoupling'])
 
     def plan_concrete_checks(self):
         db = self.db
@@ -788,6 +804,15 @@ class ReviewPlanner:
                 'WAITING_EVIDENCE' if missing else 'READY',
                 required_inputs=missing, reason='纯网表冷跑规则')
 
+        for rule, (name, checker) in sorted(registry_cold_rules().items()):
+            inventory = self.inventories.get(checker.id)
+            gaps = list(inventory.get('discovery_gaps', [])) if inventory else ['inventory unavailable']
+            self.add_rule(
+                rule, name, 'APPLICABLE',
+                'WAITING_EVIDENCE' if gaps else 'READY',
+                instances=checker.rule_instances(rule, inventory) if inventory else [],
+                required_inputs=gaps, reason='检查器冷跑规则')
+
         by_rule = {}
         for check in self.checks:
             if check.get('rule'):
@@ -827,6 +852,16 @@ class ReviewPlanner:
                     rule, name, 'UNDETERMINED', 'WAITING_EVIDENCE',
                     required_inputs=['design intent/platform applicability'],
                     reason='网表未检测到实例，但不能据此直接判 NA')
+
+        for rule, (name, checker) in sorted(registry_hot_rules().items()):
+            instances = by_rule.get(rule, [])
+            planned = [x for x in self.checks if x['id'] in instances]
+            ready = bool(planned) and all(x['readiness'] == 'READY' for x in planned)
+            self.add_rule(
+                rule, name, 'APPLICABLE' if instances else 'UNDETERMINED',
+                'READY' if ready else 'WAITING_EVIDENCE', instances=instances,
+                required_inputs=[] if ready else ['ER1 structured evidence'],
+                reason='检查器热跑规则；未检测到实例也不得直接判 NA')
 
         pintype = self.db.get('pintype', {})
         self.add_rule(
@@ -876,11 +911,81 @@ class ReviewPlanner:
                                required_inputs=['official full pinout + exact MPN/package'],
                                trigger=[f'refdes:{ref}'])
 
+    def plan_explicit_evidence(self):
+        # Explicit targets must not disappear because their nets/pins lack a familiar name.
+        for evidence in self.evidence.get('checks', []):
+            if any(x.get('evidence_check_id') == evidence['id'] for x in self.checks):
+                continue
+            obj = {k: evidence[k] for k in ('node', 'net', 'ref') if evidence.get(k)}
+            gaps = readiness_gaps(self.db, evidence, self.datasheet_audit, self.db_sha256)
+            item = self.add_check('provided-evidence', obj,
+                '按对应 evidence_check_id 的条款核对显式目标与状态',
+                'ER4' if evidence['rule'] == 'Rule-08' else 'ER1', 'AC0-HOT',
+                readiness='WAITING_EVIDENCE' if gaps else 'READY',
+                required_inputs=gaps, rule=evidence['rule'])
+            if not item.get('evidence_check_id'):
+                # Invalid coordinates remain visible as waiting work, not fabricated matches.
+                item['evidence_check_id'] = evidence['id']
+                item['object']['state'] = (evidence.get('basis') or {}).get('state')
+
+    def merge_previous_checks(self):
+        """Carry manual checks forward on the same electrical baseline, never carry results."""
+        previous = self.previous_plan
+        if previous is None:
+            return
+        if not isinstance(previous, dict) or previous.get('db_sha256') != self.db_sha256:
+            raise ValueError('merge plan must be bound to the current db_sha256; regenerate/review stale plans')
+        if ('i2c_topology' in previous and previous['i2c_topology'] != self.i2c_topology):
+            raise ValueError('I2C topology/state/assembly changed; regenerate and explicitly review/migrate prior checks')
+        if ('decoupling' in previous and previous['decoupling'] != self.decoupling):
+            raise ValueError('decoupling input/state/assembly changed; regenerate and explicitly review/migrate prior checks')
+        if previous.get('revision_impact_version') == 1:
+            baseline = {'db_digest': revision_digest(self.old_db) if self.old_db is not None else None,
+                        'plan_digest': revision_digest(self.old_plan) if self.old_plan is not None else None}
+            if self.review_mode != 'revision' or previous.get('revision_impact', {}).get('baseline') != baseline:
+                raise ValueError('merge plan revision baseline changed; supply the same old_db/old_plan')
+        checks = previous.get('checks')
+        if not isinstance(checks, list):
+            raise ValueError('merge plan checks must be an array')
+        current = {item['id']: item for item in self.checks}
+        seen = set()
+        identity = ('check', 'rule', 'object', 'criterion', 'stage', 'executor', 'evidence_check_id', 'parent_check_id')
+        for item in checks:
+            if not isinstance(item, dict) or not _text(item.get('id')) or item['id'] in seen:
+                raise ValueError('merge plan contains an invalid or duplicate check id')
+            key = item['id']
+            seen.add(key)
+            if item.get('check') == 'revision-impact-coverage' and previous.get('revision_impact_version') == 1:
+                # Coverage is regenerated. Keep cold provisional removal records
+                # even if hot evidence later restores the prior state check.
+                continue
+            if (not all(_text(item.get(k)) for k in ('check', 'criterion', 'stage', 'executor'))
+                    or not isinstance(item.get('object'), dict)
+                    or item.get('applicability') not in APPLICABILITY
+                    or item.get('readiness') not in READINESS
+                    or not isinstance(item.get('handoff'), dict)
+                    or not isinstance(item['handoff'].get('required'), bool)):
+                raise ValueError(f'{key}: incomplete merged check definition')
+            if key in current:
+                if item['handoff'] != current[key]['handoff']:
+                    raise ValueError(f'{key}: handoff details changed; resolve the plan explicitly')
+                if any(item.get(field) != current[key].get(field) for field in identity):
+                    raise ValueError(f'{key}: check identity/criterion changed; resolve the plan explicitly')
+                continue
+            # Final results live in review-results.json. Do not turn old plan annotations into verdicts.
+            retained = deepcopy(item)
+            retained['review_result'] = 'NA' if retained.get('applicability') == 'NOT_APPLICABLE' else None
+            retained['evidence_confidence'] = None
+            self.checks.append(retained)
+
     def build(self):
         self.plan_coverage()
         self.plan_features()
         self.plan_concrete_checks()
         self.plan_circuit_checks()
+        self.plan_checkers()
+        self.plan_explicit_evidence()
+        self.merge_previous_checks()
         for material in (self.datasheet_audit or {}).get('materials', []):
             if material.get('status') == 'NOT_FOUND':
                 self.diagnostics.append({
@@ -894,9 +999,10 @@ class ReviewPlanner:
         self.rule_plan.sort(key=lambda x: x['rule'])
         applicability = Counter(x['applicability'] for x in self.checks)
         readiness = Counter(x['readiness'] for x in self.checks)
-        return {
+        plan = {
             'schema_version': 1,
             'generated_by': 'AC0 Applicability Discovery',
+            'db_sha256': self.db_sha256,
             'review_mode': self.review_mode,
             'result_model': {
                 'review_result': list(RESULT_STATUSES),
@@ -908,8 +1014,10 @@ class ReviewPlanner:
                 'requirements': [
                     'no_unresolved_blocking_fail',
                     'no_unresolved_blocking_insufficient',
-                    'all_applicable_checks_executed_or_accepted',
-                    'required_handoffs_have_receiver_constraint_verification',
+                    'all_applicable_checks_have_reviewed_results',
+                    'p0_requires_verified_repair',
+                    'risk_acceptance_preserves_fail_or_insufficient_with_authorized_record',
+                    'required_handoffs_accepted_with_receiver_constraint_verification_and_evidence',
                     'revision_diff_and_claims_pass_when_applicable',
                 ],
             },
@@ -940,18 +1048,40 @@ class ReviewPlanner:
             'checks': self.checks,
             'diagnostics': self.diagnostics,
         }
+        for checker in REGISTRY:
+            inventory = self.inventories.get(checker.id)
+            if inventory is None or checker.plan_key is None:
+                continue
+            plan[checker.plan_key] = inventory
+            if checker.version_key is not None:
+                plan[checker.version_key] = checker.version
+        attach_metadata(plan, self.db, self.intent, self.evidence, self.datasheet_audit,
+                        self.old_db, self.old_plan)
+        plan['summary'].update(
+            checks_total=len(plan['checks']),
+            applicability=dict(sorted(Counter(c['applicability'] for c in plan['checks']).items())),
+            readiness=dict(sorted(Counter(c['readiness'] for c in plan['checks']).items())))
+        if plan.get('revision_impact'):
+            history = next(r for r in plan['rule_plan'] if r['rule'] == 'Rule-17')
+            history['instances'] = sorted(set(history['instances']) |
+                {e['check_id'] for e in plan['revision_impact']['entries'] if e['required']})
+            if plan['revision_impact']['blocking_gaps']:
+                history['readiness'] = 'WAITING_EVIDENCE'
+                history['required_inputs'] = sorted(set(history['required_inputs']) |
+                    set(plan['revision_impact']['blocking_gaps']))
+        return plan
 
 
 def build_review_plan(db, intent=None, evidence=None, review_mode=None,
                       old_db_available=False, claims_available=False,
-                      datasheet_audit=None):
+                      datasheet_audit=None, previous_plan=None, old_db=None, old_plan=None):
     if evidence is not None:
         errors = validate_evidence(evidence)
         if errors:
             raise ValueError('evidence.json 无效: ' + '; '.join(errors))
     return ReviewPlanner(
         db, intent, evidence, review_mode, old_db_available,
-        claims_available, datasheet_audit).build()
+        claims_available, datasheet_audit, previous_plan, old_db, old_plan).build()
 
 
 def main():
@@ -964,22 +1094,33 @@ def main():
         '--datasheet-audit',
         help='audit_datasheets.py 产出的逐物料覆盖审计 JSON')
     parser.add_argument('--review-mode', choices=('first', 'revision'))
-    parser.add_argument('--old-db', help='复审旧版 db.json（只判定可用性）')
+    parser.add_argument('--old-db', help='实际读取复审旧版 db.json 并生成变化清单')
+    parser.add_argument('--old-plan', help='上一设计版本最终计划；不是本版冷跑 merge-plan')
+    parser.add_argument('--revision-impact-json', help='另存本次改版影响与必需复验清单')
     parser.add_argument('--claims', help='历史意见断言 JSON（只判定可用性）')
     parser.add_argument('--json', required=True, help='写出 review-plan.json')
+    parser.add_argument('--i2c-topology-json', help='另存本次生成的 I2C 连接覆盖清单')
+    parser.add_argument('--decoupling-json', help='另存去耦连接/装配/标称容量清单；不是电气判决')
     args = parser.parse_args()
 
     for label, path in (('--old-db', args.old_db), ('--claims', args.claims)):
         if path and not os.path.isfile(path):
             sys.exit(f'[FATAL] {label} 文件不存在: {path}')
 
-    db = json.load(io.open(args.db, encoding='utf-8'))
-    intent = json.load(io.open(args.intent, encoding='utf-8')) if args.intent else None
-    evidence = (json.load(io.open(args.evidence, encoding='utf-8'))
-                if args.evidence else None)
-    datasheet_audit = (
-        json.load(io.open(args.datasheet_audit, encoding='utf-8'))
-        if args.datasheet_audit else None)
+    try:
+        db = load_json(args.db)
+        intent = load_json(args.intent) if args.intent else None
+        evidence = load_json(args.evidence) if args.evidence else None
+        datasheet_audit = load_json(args.datasheet_audit) if args.datasheet_audit else None
+        old_db = load_json(args.old_db) if args.old_db else None
+        old_plan = load_json(args.old_plan) if args.old_plan else None
+    except (OSError, ValueError) as error:
+        parser.error(str(error))
+    if args.intent and not isinstance(intent, dict):
+        parser.error('explicit intent.json root must be an object')
+    for supplied, value, label in ((args.old_db, old_db, '--old-db'), (args.old_plan, old_plan, '--old-plan')):
+        if supplied and not isinstance(value, dict):
+            parser.error(label + ' JSON root must be an object')
     errors = validate_intent(intent)
     if errors:
         sys.exit('[FATAL] intent.json 无效:\n  - ' + '\n  - '.join(errors))
@@ -992,10 +1133,24 @@ def main():
         if errors:
             sys.exit('[FATAL] datasheet-audit.json 无效:\n  - '
                      + '\n  - '.join(errors))
-    plan = build_review_plan(
-        db, intent, evidence, args.review_mode,
-        old_db_available=bool(args.old_db), claims_available=bool(args.claims),
-        datasheet_audit=datasheet_audit)
+    try:
+        plan = build_review_plan(
+            db, intent, evidence, args.review_mode,
+            old_db_available=bool(args.old_db), claims_available=bool(args.claims),
+            datasheet_audit=datasheet_audit, old_db=old_db, old_plan=old_plan)
+    except ValueError as error:
+        parser.error(str(error))
+    if args.revision_impact_json:
+        if 'revision_impact' not in plan:
+            parser.error('--revision-impact-json requires revision mode')
+        with open(args.revision_impact_json, 'w', encoding='utf-8') as stream:
+            json.dump(plan['revision_impact'], stream, ensure_ascii=False, indent=2, allow_nan=False)
+    if args.i2c_topology_json:
+        with open(args.i2c_topology_json, 'w', encoding='utf-8') as stream:
+            json.dump(plan['i2c_topology'], stream, ensure_ascii=False, indent=2)
+    if args.decoupling_json:
+        with open(args.decoupling_json, 'w', encoding='utf-8') as stream:
+            json.dump(plan['decoupling'], stream, ensure_ascii=False, indent=2, allow_nan=False)
     json.dump(plan, io.open(args.json, 'w', encoding='utf-8'),
               ensure_ascii=False, indent=2)
     summary = plan['summary']

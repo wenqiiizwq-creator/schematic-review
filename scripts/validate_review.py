@@ -8,7 +8,11 @@ import hashlib
 import json
 from pathlib import Path
 import sys
+from checkers import REGISTRY, validate_inventories
 from validate_remediation import validate_remediation, READINESS
+from electrical_contract import db_fingerprint, load_json
+from plan_review import ReviewPlanner
+from revision_impact import validate_metadata, validate_reverification, check_spec, digest as revision_digest
 
 RESULTS = {"PASS", "FAIL", "INSUFFICIENT", "NA"}
 SEVERITIES = ("error", "warning", "suggestion")
@@ -37,7 +41,26 @@ def fingerprint(data):
     return hashlib.sha256(encoded).hexdigest()
 
 
-def validate_review(plan, report, db=None, lint_runs=None, require_actionable=False):
+def primary_anchors(obj, db=None):
+    """Declared primary targets, not every contextual ref/net in a circuit group."""
+    refs, nets = set(), set()
+    if text(obj.get('ref')):
+        refs.add(obj['ref'])
+    if text(obj.get('net')):
+        nets.add(obj['net'])
+    node = obj.get('node')
+    if text(node):
+        if '.' in node:
+            refs.add(node.rsplit('.', 1)[0])
+        if isinstance(db, dict) and isinstance(db.get('pin2net'), dict):
+            net = db['pin2net'].get(node)
+            if text(net):
+                nets.add(net)
+    return refs, nets
+
+
+def validate_review(plan, report, db=None, lint_runs=None, require_actionable=False,
+                    require_bindings=False, old_db=None, old_plan=None, require_revision=False):
     errors, blockers = [], []
     def require(ok, message):
         if not ok:
@@ -76,15 +99,69 @@ def validate_review(plan, report, db=None, lint_runs=None, require_actionable=Fa
             blockers.append('input netlist failed integrity/export checks')
         require(report.get("db_digest") == fingerprint(db), "db_digest mismatch")
     expected = index(plan.get("checks"), "plan.checks")
+    revision_errors, revision = validate_metadata(plan, db, old_db, old_plan, require_revision)
+    errors.extend(revision_errors)
+    if revision is not None:
+        errors.extend(validate_reverification(plan, report, revision))
+    if 'revision_impact_version' in report and revision is None:
+        require(False, 'revision results require a valid revision-impact plan')
+    if 'dependency_version' in plan and db is not None:
+        # Recreate automatic checks from raw saved inputs, not the possibly
+        # edited check list. Manual additions stay independently reviewable.
+        try:
+            inputs = plan['review_inputs']
+            planner = ReviewPlanner(db, inputs['intent'], inputs['evidence'],
+                                    plan.get('review_mode'), datasheet_audit=inputs['datasheet_audit'])
+            planner.plan_coverage()
+            planner.plan_features()
+            planner.plan_concrete_checks()
+            planner.plan_circuit_checks()
+            planner.plan_checkers()
+            planner.plan_explicit_evidence()
+            for generated in planner.checks:
+                actual = expected.get(generated['id'])
+                require(actual is not None and revision_digest(check_spec(actual)) == revision_digest(check_spec(generated)),
+                        generated['id'] + ': automatic check missing or changed from saved inputs')
+        except (ValueError, TypeError, KeyError, AttributeError) as error:
+            require(False, 'invalid generated-check inputs: ' + str(error))
+    gates = validate_inventories(REGISTRY, plan, expected, db, require,
+                                 lambda context: ReviewPlanner(db, context))
     checks = index(report.get("checks"), "results.checks")
     findings = index(report.get("findings"), "findings")
+    bindings = (require_bindings or revision is not None or 'binding_version' in report
+                or any('binding' in x for x in checks.values()))
+    if bindings:
+        require(type(report.get('binding_version')) is int and report['binding_version'] == 1,
+                'binding_version must be 1 for object/criterion/evidence bindings')
+    bound_count = 0
     require(bool(expected), "empty review plan")
     require(set(checks) == set(expected),
             f"check coverage mismatch: missing={sorted(set(expected)-set(checks))}, "
             f"unexpected={sorted(set(checks)-set(expected))}")
     accepted = False
     for key, item in checks.items():
+        if bindings and key in expected:
+            planned = expected[key]
+            binding = item.get('binding')
+            require(isinstance(planned.get('object'), dict) and text(planned.get('criterion')),
+                    f'{key}: bound plan requires object and non-empty criterion')
+            planned_object = planned.get('object')
+            coordinates_ok = isinstance(planned_object, dict) and all(
+                field not in planned_object or text(planned_object[field])
+                for field in ('ref', 'node', 'net'))
+            require(coordinates_ok, f'{key}: declared primary ref/node/net must be non-empty strings')
+            require(isinstance(binding, dict), f'{key}: binding requires reviewed object and criterion')
+            if isinstance(binding, dict):
+                object_ok = coordinates_ok and isinstance(binding.get('object'), dict) and (
+                    fingerprint(binding['object']) == fingerprint(planned['object']))
+                criterion_ok = text(binding.get('criterion')) and binding['criterion'] == planned.get('criterion')
+                require(object_ok, f'{key}: binding object differs from planned object/configuration/state')
+                require(criterion_ok, f'{key}: binding criterion differs from planned criterion')
+                bound_count += int(object_ok and criterion_ok)
         result, app = item.get("review_result"), item.get("applicability")
+        if result == 'PASS':
+            for message in gates.get(key, []):
+                require(False, message)
         require(isinstance(result, str) and result in RESULTS, f"{key}: invalid result")
         require(isinstance(app, str) and app in APPLICABILITY, f"{key}: invalid applicability")
         require(text(item.get("rationale")), f"{key}: missing rationale")
@@ -186,6 +263,11 @@ def validate_review(plan, report, db=None, lint_runs=None, require_actionable=Fa
         if item.get("kind") == "DEFECT":
             require(any(checks[x].get("review_result") == "FAIL" and checks[x].get("finding_id") == fid
                         for x in linked if x in checks), f"{fid}: orphan defect")
+            if bindings:
+                require(len(linked) == len(set(linked)), f'{fid}: duplicate check link')
+                require(all(x in checks and checks[x].get('review_result') == 'FAIL' and
+                            checks[x].get('finding_id') == fid for x in linked),
+                        f'{fid}: every defect link must be its own FAIL check')
         elif modern and item.get("kind") == "RISK":
             require(item.get("severity") in ("warning", "suggestion"), f"{fid}: RISK requires warning or suggestion")
             require(ids(item.get("missing_inputs")), f"{fid}: RISK requires missing_inputs")
@@ -196,6 +278,17 @@ def validate_review(plan, report, db=None, lint_runs=None, require_actionable=Fa
             require(item.get("severity") == ("suggestion" if modern else "P3"), f"{fid}: optional improvement must use suggestion severity")
             require(all(checks[x].get("review_result") == "PASS" for x in linked if x in checks),
                     f"{fid}: improvement requires compliant underlying check")
+        if bindings and isinstance(location, dict):
+            located_refs = set(location['refs']) if ids(location.get('refs')) else set()
+            located_nets = set(location['nets']) if ids(location.get('nets')) else set()
+            for key in linked:
+                obj = expected.get(key, {}).get('object')
+                if isinstance(obj, dict):
+                    refs, nets = primary_anchors(obj, db)
+                    require(refs.issubset(located_refs),
+                            f'{fid}/{key}: finding location omits checked ref(s) {sorted(refs-located_refs)}')
+                    require(nets.issubset(located_nets),
+                            f'{fid}/{key}: finding location omits checked net(s) {sorted(nets-located_nets)}')
 
     scope = report.get("scope_checks", {})
     require(isinstance(scope, dict) and set(scope) == SCOPE, "scope_checks must cover six audit dimensions")
@@ -245,6 +338,21 @@ def validate_review(plan, report, db=None, lint_runs=None, require_actionable=Fa
                 'lint_reviews must match supplied cold/hot runs')
         for run in lint_runs:
             digest = fingerprint(run)
+            run_checks = {}
+            if isinstance(run, dict) and 'review_plan' in run:
+                run_plan = run['review_plan']
+                require(isinstance(run_plan, dict), f'{digest}: invalid lint review_plan')
+                if isinstance(run_plan, dict):
+                    run_checks = index(run_plan.get('checks'), f'{digest}.review_plan.checks')
+                    if db is not None and 'db_sha256' in run_plan:
+                        require(run_plan['db_sha256'] == db_fingerprint(db),
+                                f'{digest}: lint plan belongs to another netlist')
+                    for key, planned in run_checks.items():
+                        require(key in expected, f'{digest}: final plan omits lint check {key}')
+                        if key in expected:
+                            fields = ('rule', 'object', 'criterion', 'evidence_check_id', 'parent_check_id')
+                            require(all(planned.get(k) == expected[key].get(k) for k in fields),
+                                    f'{key}: final plan changed the lint check identity/criterion')
             findings_list = run.get('findings', []) if isinstance(run, dict) else run
             if not isinstance(findings_list, list):
                 require(False, 'invalid lint findings list')
@@ -258,6 +366,14 @@ def validate_review(plan, report, db=None, lint_runs=None, require_actionable=Fa
             for number, linked in dispositions.items():
                 require(ids(linked) and all(x in checks for x in linked),
                         f'{digest}[{number}]: missing/unknown result check')
+                if isinstance(number, str) and number.isdecimal() and int(number) < len(findings_list):
+                    finding = findings_list[int(number)]
+                    evidence_id = finding.get('check_id') if isinstance(finding, dict) else None
+                    if evidence_id and run_checks:
+                        targets = {k for k, item in run_checks.items()
+                                   if item.get('evidence_check_id') == evidence_id}
+                        require(bool(targets) and ids(linked) and targets.issubset(linked),
+                                f'{digest}[{number}]: hot candidate must link its state checks')
 
     counts = dict(Counter(x.get("review_result") for x in checks.values()
                           if isinstance(x.get("review_result"), str)))
@@ -279,6 +395,10 @@ def validate_review(plan, report, db=None, lint_runs=None, require_actionable=Fa
                     for state in READINESS}
     return {"valid": not errors, "errors": errors, "blockers": blockers,
             "release": "NO_GO" if errors else release, "summary": computed,
+            "revision_validation": {"enforced": revision is not None,
+                "required_checks": sum(e['required'] for e in revision['entries']) if revision else 0,
+                "strategy": revision['strategy'] if revision else None},
+            "binding_validation": {"enforced": bool(bindings), "bound_checks": bound_count},
             "remediation_validation": {"enforced": actionable, "by_readiness": repair_counts}}
 
 
@@ -287,17 +407,27 @@ def main():
     parser.add_argument("plan")
     parser.add_argument("results")
     parser.add_argument("--db")
+    parser.add_argument("--old-db")
+    parser.add_argument("--old-plan")
+    parser.add_argument("--require-revision-impact", action="store_true",
+                        help="require current revision dependencies and re-verification records")
     parser.add_argument("--json")
     parser.add_argument("--lint", action="append", help="cold/hot lint JSON; repeat for each run")
     parser.add_argument("--require-release", action="store_true")
     parser.add_argument("--require-actionable", action="store_true",
                         help="require detailed repair instructions for every finding")
+    parser.add_argument("--require-bindings", action="store_true",
+                        help="require explicit reviewed-object/criterion bindings and finding target consistency")
     args = parser.parse_args()
     try:
-        read = lambda p: json.loads(Path(p).read_text(encoding="utf-8"))
+        read = load_json
         result = validate_review(read(args.plan), read(args.results), read(args.db) if args.db else None,
                                  [read(x) for x in args.lint] if args.lint else None,
-                                 require_actionable=args.require_actionable)
+                                 require_actionable=args.require_actionable,
+                                 require_bindings=args.require_bindings,
+                                 old_db=read(args.old_db) if args.old_db else None,
+                                 old_plan=read(args.old_plan) if args.old_plan else None,
+                                 require_revision=args.require_revision_impact)
     except (ValueError, OSError, TypeError) as exc:
         result = {"valid": False, "release": "NO_GO", "errors": [str(exc)]}
     if args.json:

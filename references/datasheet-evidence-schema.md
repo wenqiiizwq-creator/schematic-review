@@ -10,6 +10,8 @@ INSUFFICIENT。不自动填 1% 电阻公差、零 Vref 误差、零偏置电流�
 多个目标坐标必须一致；同网不同引脚不共享门限。depends_on 要列全参数来源，包括
 非目标 IC、输入负载、外部驱动及用于保证曲线/额定值的关键无源器件。
 脚本至少强制检查目标器件及目标网上的 U/M/Q/D；跨网的额外依赖由 agent 明确声明。
+Rule-08 新增节点分析路径对可完整提取的网络，自动将全部电阻与被忽略输入/C 纳入计划
+和热跑的来源依赖；遗漏、过期或未 AVAILABLE 均保持 WAITING_EVIDENCE/INSUFFICIENT。
 
 basis 包含：
 
@@ -22,20 +24,21 @@ basis 包含：
 
 ```sh
 python3 scripts/electrical_contract.py db.json --document /tmp/codex-work/task/datasheets/part.pdf
-python3 scripts/audit_datasheets.py db.json --evidence evidence.json \
-  --require-ref L1 --require-ref F1 --resolution datasheet-resolution.json \
-  --json datasheet-audit.json
-python3 scripts/plan_review.py db.json --intent intent.json --evidence evidence.json \
-  --datasheet-audit datasheet-audit.json --json review-plan.json
-python3 scripts/lint.py db.json --intent intent.json --evidence evidence.json \
-  --datasheet-audit datasheet-audit.json --json lint.json
 ```
+
+资料审计、计划合并与热跑命令统一见 [SKILL.md](../SKILL.md)；额外关键物料通过
+`audit_datasheets.py --require-ref L1 --require-ref F1` 加入依赖，相关来源仍须写回 evidence。
 
 audit 按需覆盖依赖位号。NOT_FOUND 必须先记录 LCSC/立创与原厂检索；MISSING/
 NEEDS_VERIFICATION/NOT_FOUND 均不能让依赖检查变 READY。无关物料缺资料不阻断
 已具备全部依赖的检查；总准出仍需处理所有适用阻断项。
 
 ## Rule-08：已建模的反馈设定窗口
+
+可继续手工提供下面的 vref；重复读取同一已核实资料时，使用
+[项目内 Vref 参数复用](datasheet-facts-schema.md)。vref_request 声明本次目标/完整工况，
+目标 source 补精确 mpn/package。物化工具生成 vref 和 vref_binding；未物化不热跑。
+计划与 lint 共享事实/PDF/工况的实时失效门，不能删除绑定保留旧数值来绕过复验。
 
 ```json
 {
@@ -69,9 +72,11 @@ NEEDS_VERIFICATION/NOT_FOUND 均不能让依赖检查变 READY。无关物料缺
 
 示例数值为合成输入，指纹和身份文字必须替换为实际证据；不能原样用于设计。
 电阻公差从各 VALUE 提取。resistor_tolerance 是有 BOM/采购规格支持时才可显式设置的
-统一回退值；不覆盖已写明的单颗公差。未知支路、多参考域、未解析电阻、共享电阻
-或递归截断会返回 INSUFFICIENT。ignored_nodes 只允许已说明输入负载的 U/M 和 DC
-下已证明可忽略的 C 节点，不支持用该字段绕过 Q/D。给定 reference_net 为计算的零点，
+统一回退值；不覆盖已写明的单颗公差。共享支路/桥式正电阻网络可在完整模型与来源绑定
+下走线性节点分析，规模、角点与数值边界见 [wca-formulas.md](wca-formulas.md)。
+未知支路、多参考域、0Ω、未解析电阻或超限继续 INSUFFICIENT。ignored_nodes 只允许
+已说明输入负载的 U/M 和 DC 下已证明可忽略的 C 节点，新节点路径的 U/M 必须位于 FB 网，
+不支持用该字段绕过中间输入电流或 Q/D。给定 reference_net 为计算的零点，
 它与实际负载地的偏差另建检查；不把 PGND/AGND 等名称视作同一网。
 
 ## Rule-09：无源连接与等效阻值
@@ -116,6 +121,26 @@ float 必须给精确 node；仅核对没有已装配的外部连接，不推断
 kind=pin_map、ref 和 expected（引脚号到名称或允许名称数组的映射）。同样需要 basis
 及资料审计；连接器可通过 --require-ref 加入。PASS 仅覆盖 expected 列出的引脚，
 封装方向、全部引脚覆盖与对端定义需独立复核。
+
+## 检查器热跑规则
+
+注册表检查器自带的热跑规则与上列规则同一契约：同样要 id/rule/kind/citation、目标坐标、
+depends_on 与 basis，同样按资料审计绑定文档。差别只在各自的保证值字段——**缺任一项即
+INSUFFICIENT，不得用典型值、经验值或"常见做法"顶替**；比值/系数类门槛（体电容比、CTR
+寿命衰减）必须来自项目规定。各规则字段：
+
+| 规则 | kind | 保证值字段 |
+|---|---|---|
+| PS-10 | `gate_drive` | `channel`（n/p）、`vgs_drive_v{min,max}`、`vgs_rds_on_v`、`vgs_abs_v{min,max}`；P 沟道按量纲翻转后比较 |
+| IF-10 | `input_filter_damping` | `vin_min_v`、`pin_max_w`、`esr_bulk_ohm`、`c_bulk_f`、`c_in_f`、`l_filter_h`、`c_bulk_ratio_min`（项目规定） |
+| PU-10 | `dropout` | `vin_min_v`、`dropout_max_v`（最低温度/最大负载）、`vout_required_min_v` |
+| SV-10 | `reset_pulse` | `pulse_width_s{min,max}`、`required_width_s{min,max}`、`output_type`（open_drain/push_pull） |
+| DL-10 | `diff_level` | `coupling`（ac/dc）、`driver_swing_v`、`receiver_common_mode_v`、`receiver_input_diff_v`，直流耦合另需 `driver_common_mode_v`、交流耦合另需 `bias_common_mode_v` |
+| OC-10 | `opto_ctr` | `drive_v`、`vf_v`、`driver_drop_v`、`r_led_ohm`、`r_pullup_ohm`、`v_pullup_v`、`vol_required_v`、`ctr_min`、`ctr_derating`（项目规定，(0,1]）、`if_abs_max_a` |
+
+结果同样写入 check_results：PASS 带 scope 明示未判定的部分（开关速度、全频阻抗、瞬态、
+抖动、隔离耐压等），FAIL/INSUFFICIENT 带 calculation 保留角点。逐检查器的识别范围与边界见
+[checkers.md](checkers.md)。
 
 ## 输出与迁移
 

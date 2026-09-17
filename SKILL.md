@@ -5,7 +5,7 @@ description: "审查硬件电路原理图的电气合理性和需求符合性，
 
 # 电路原理图系统审查
 
-> V2.2｜需求追溯、对象覆盖、工况审查、三等级校准、精简前言、面向新手的修改步骤与结果校验。
+> V2.2（2026-09-17 能力更新）｜需求追溯、对象覆盖、工况审查、三等级校准、精简前言、面向新手的修改步骤与结果校验。
 
 目标是在给定资料、工况和原理图边界内，系统寻找连接错误、参数/额定值不合理、功能遗漏、
 要求偏离及可预见的异常状态问题，提出能执行和复验的修改建议。不能承诺发现物理电路的
@@ -66,8 +66,13 @@ PDF 与网表时间接近不能证明同版，需核修订号和关键改动。�
 ### 1. 解析与完整性
 
     python3 scripts/parse_netlist.py <allegro目录> -o db.json
+    python3 scripts/parse_kicad.py <文件.kicad_sch|kicadxml> -o db.json
 
-随附解析器仅实现 Cadence/OrCAD 三件套；其他 EDA 需生成同契约索引并验证适配器。
+随附解析器实现 Cadence/OrCAD 三件套与 KiCad 网表（kicadxml）；其他 EDA 需生成同契约索引
+并验证适配器。若 kicad-cli 未在 PATH，显式传 `--kicad-cli <已有可执行文件路径>`，不自行安装。
+KiCad 输入把 No-connect 属性、真悬空引脚与 DNP 不贴分开记：声明 NC 的引脚
+进伪网络并列入 `no_connect_nodes`，无标记的悬空引脚保持真实单节点网由 Rule-01 扫出，
+`nc` 只认 dnp 属性或 VALUE 上的 NC 标记（`exclude_from_bom` 不是装配证据）。
 读 [netlist-parsing.md](references/netlist-parsing.md)：核对重复归网、缺失 primitive、索引互反、
 符号声明引脚和网表实有引脚。解析率不等于官方封装覆盖率；对官方 pinout 双向做差集，
 包括网表完全不存在的脚、EP、隐藏电源和多单元符号。
@@ -80,12 +85,28 @@ NC 汇集伪网、No-connect 属性、DNP 不贴是三件事。`nc` 是解析标
 
 ### 2. AC0 计划与冷跑
 
-    python3 scripts/plan_review.py db.json --intent intent.json --json review-plan.json
-    python3 scripts/lint.py db.json --log netlist.log --intent intent.json --json lint-cold.json
+    python3 scripts/lint.py db.json --log netlist.log --intent intent.json --plan-json review-plan-cold.json --json lint-cold.json
 
 读 [review-plan-schema.md](references/review-plan-schema.md) 和 [lint-rules.md](references/lint-rules.md)。
 补齐命名启发式未发现的对象/需求/工况。排除候选须有反证；无特征不等于 NA。
-分类错误时保留原计划，记录新适用性与出处，不能保留 APPLICABLE 又写 NA。
+人工补查项加入 review-plan-cold.json；保留 lint-cold.json 中的原始快照。适用性变更记出处。
+
+检查器注册表每趟都跑，读 [检查器契约](references/checkers.md)：识别依据分声明/拓扑/名称线索
+三级，名称线索只生成待核项；清单绑输入指纹，改了输入要重新生成，不能编辑清单消缺口。
+`--i2c-topology-json`、`--decoupling-json` 与通用 `--checker-json <id>=out.json` 可另存清单。
+
+I²C（`intent.i2c_topology`）：只跨已确认贴装的两脚电阻和闭合跳线找远端上拉，串阻保留节点，
+有源器件两侧不合并；名称、`nc=false`、默认 Bridged 都不是状态证据；外接模块未知或路径未覆盖
+保持待核，连接发现不等于 Rule-09 电气通过。
+
+去耦（`intent.decoupling`）：补完整官方脚表、分组/返回节点与逐状态装配；零电容、未知容量和
+未连物理脚都要登记；不跨 0Ω/磁珠合并，不以同网共享或标称总容量证明本地去耦/有效容量合格，
+位置与回路另交 PCB HANDOFF。
+
+其余检查器：感性负载钳位 IL、功率开关 PS、输入滤波 IF、上电使能与压差 PU、监控看门狗 SV、
+差分电平 DL、光耦 OC。冷跑只按连接关系报疑点，引脚角色缺失就只留缺口；热跑
+PS-10/IF-10/PU-10/SV-10/DL-10/OC-10 只吃带出处的保证值，缺一项即 INSUFFICIENT，
+体电容比值与 CTR 寿命衰减等系数必须来自项目规定，不得默认。
 
 ### 3. ER1 身份、官方条款与热跑
 
@@ -105,12 +126,18 @@ strap、模式、应用计算、封装订货、errata；保留“文档章节→
 Agent 完成资料核对/补取并写出 `datasheet-resolution.json` 后，纳入判据依赖再热跑：
 
     python3 scripts/audit_datasheets.py db.json --datasheet-dir <资料目录> --resolution datasheet-resolution.json --evidence evidence.json --json datasheet-audit.json
-    python3 scripts/lint.py db.json --log netlist.log --intent intent.json --evidence evidence.json --datasheet-audit datasheet-audit.json --plan-json review-plan-hot.json --json lint-hot.json
+    python3 scripts/lint.py db.json --log netlist.log --intent intent.json --evidence evidence.json --datasheet-audit datasheet-audit.json --merge-plan review-plan-cold.json --plan-json review-plan.json --json lint-hot.json
+
+Rule-08 需要复用已核对的 Vref 时，按 [Vref 参数复用](references/datasheet-facts-schema.md)
+把事实保存在项目内，明确精确 MPN/封装和本次完整工况，先物化为 evidence 再热跑。
+事实与电路结论分开；过期、条件不覆盖或多条适用保证均待核，不以 typ/置信度代替保证值。
 
 证据格式见 [datasheet-evidence-schema.md](references/datasheet-evidence-schema.md)。自动结果只覆盖
 输入的具体对象与判据，未覆盖实例仍待查。热跑证据须绑定当前网表/物料、装配及状态、
 文档内容指纹；关键 R/C/L/F/Y/J 的参数按需纳入依赖。资料未 AVAILABLE、指纹过期、
-公差/负载/采样模型缺失时，计划和执行均保持待核。保存冷/热计划，不能覆盖已填的最终结果。
+公差/负载/采样模型缺失时，计划和执行均保持待核。合并后的 review-plan.json 是唯一最终计划：
+保留冷计划和人工补查项，热跑按状态展开子项。结果独立填写，旧结果不能自动传给新子项；
+新增人工项继续加入最终计划。跨网表版本的旧计划不能自动合并，迁移规则见 review-plan-schema。
 
 ### 4. ER2 电源树与状态
 
@@ -132,8 +159,9 @@ TX/RX、P/N、Host/Device、Source/Sink 按两端官方语义复述，查对端�
 ### 6. ER4 参数、容差与改法复算
 
 读 [wca-formulas.md](references/wca-formulas.md)。先确认模型（固定/可调、内置反馈、负载效应），
-再代入实际串并联、输入/温度/负载、公差区间。可用 `scripts/solve_dividers.py`；不支持/
-截断/共享支路保持未判定。脚本不为缺失公差生成保证窗口，轨名电压仅为检索线索。
+再代入实际串并联、输入/温度/负载、公差区间。`scripts/solve_dividers.py` CLI 用于探索；
+Rule-08 对已完整建模的共享支路可做有界线性节点分析，范围与角点限制见 wca-formulas。
+不支持、超限或缺公差仍未判定；轨名电压仅为检索线索。
 热跑分压模型明确源端、参考地、输入偏置及忽略支路依据；逻辑脚用采样窗口的保证电压
 比较 VIH/VIL，单个上拉存在不能代替电平、时序和掉电状态验算。
 区分设定目标与物理可达输出：LDO 的 FB 公式不代表升压能力；ADC FSR 不等于引脚耐压；
@@ -154,12 +182,18 @@ PCB 阻抗/间距/回流和实测约束独立 HANDOFF，边界见 [scope-boundar
 简单文字修正可用一步；多支路/控制电路给修改前后连接表或小图。参数状态与修改准备度
 必须一致；“可直接修改”仅指原理图编辑细节齐全，不表示已改、可上电或整板准出。
 按 [report-template.md](references/report-template.md) 形成报告与持久化 `review-results.json`。
-新报告设置 `schema_version: 3`、`remediation_version: 1`，每项包含 `remediation`；契约见
+新报告设置 `schema_version: 3`、`remediation_version: 1`、`binding_version: 1`，每项包含 `remediation`。
+每条结果的 `binding.object`、`binding.criterion` 记录实际已审对象和判据，必须与最终计划一致，
+包括装配配置及状态。同条证据和理由只支持这一范围；不能把同一 IC、相似 ID 或功能组的结论
+移用到其他物理脚/判据，也不能只复制字段来迎合校验。发现定位同时列根因及受影响主对象。
+绑定门验证声明一致性，不读取原文证明语义正确；工程判断仍须回读来源。契约见
 [review-results-schema.md](references/review-results-schema.md)。校验覆盖、修改说明及汇总后交付：
 
-    python3 scripts/validate_review.py review-plan.json review-results.json --db db.json --lint lint-cold.json --lint lint-hot.json --require-actionable --json review-gate.json
+    python3 scripts/validate_review.py review-plan.json review-results.json --db db.json --lint lint-cold.json --lint lint-hot.json --require-actionable --require-bindings --json review-gate.json
 
-校验器检查记录完整性/追溯/分级/准出逻辑，不替代电气判断，不证明未知缺陷为零。
+校验器对账全部冷/热计划检查及热候选的状态关联；遗漏热跑子项或人工补查项会被拒绝。
+绑定校验核对声明的对象/判据及发现定位，不读取引用原文来判断语义；字段相符仍需核实证据内容。
+退出 0 只表示台账有效；冻结时再加 `--require-release`，准出条件统一见 severity-calibration。
 交付前再按修改说明逐步演算一次：读者能否找到位置、知道删/改/加什么、接到哪里、
 采用什么规格、核对什么结果？任一答案仍需猜测就补充说明或降低修改准备度。
 已完成可做工作但材料不足时可交受限报告，结论仍为不准出。不能把未完成关键前提藏进
@@ -167,6 +201,10 @@ PCB 阻抗/间距/回流和实测约束独立 HANDOFF，边界见 [scope-boundar
 
 复审比较前轮设计和模板基线，沿变更供电/控制/保护依赖扩展复验。保留每个历史 ID，
 区分撤回、复发、接受、已修复；断言要证明期望电气状态，仅“字段变了”不足以关闭。
+读 [改版影响与复验](references/revision-impact-schema.md)：冷/热跑传同一 `--old-db` 和
+`--old-plan`，与本版 `--merge-plan` 分开；可用 `--revision-impact-json` 另存清单。
+依赖不完整时扩大为全量复验，旧项消失也须独立处置；每个必需项记录本轮方法、证据和摘要，
+不迁移旧 PASS。最终校验传相同旧基线并加 `--require-revision-impact`；缺历史快照不补造。
 
     python3 scripts/diff_netlists.py old-db.json db.json --claims review-claims.json --json diff.json --fail-on-open-claims
 
@@ -174,8 +212,17 @@ PCB 阻抗/间距/回流和实测约束独立 HANDOFF，边界见 [scope-boundar
 按error / warning展开已确认问题，再列未决风险，suggestion集中展示；全部保留证据和详细改法。
 计算、覆盖、历史、哈希、交接及完整索引后置。可生成Markdown与CSV，再按模板渲染检查PDF：
 
-    python3 scripts/render_report.py review-plan.json review-results.json --db db.json --output report.md --csv issues.csv
+    python3 scripts/render_report.py review-plan.json review-results.json --db db.json --lint lint-cold.json --lint lint-hot.json --require-bindings --output report.md --csv issues.csv
+
+复审生成报告时同样传 `--old-db old-db.json --old-plan old-plan.json --require-revision-impact`，
+不能只在校验器核复验、在报告器绕过旧基线。
 
 只改报告时保留旧版与技术事实、未决条件；逐ID记录重新分级理由，不能视作电路已修复。
 保存输入哈希、意图、计划、结构化证据、结果、计算/关键裁图和 Diff 到项目审查目录；
 临时全文/大图可放 /tmp，最终证据不得只留 /tmp。公开仓库只放脱敏合成用例。
+
+## 工具维护时的回归评测
+
+仅在维护检查脚本或评估工具升级时，按 [电路评测说明](evals/circuit_bench/README.md)
+运行冻结用例和版本比较；这不是每次原理图审查的附加步骤。评测通过不等于全板审查通过，
+不得以合成规格文档替代真实项目证据。

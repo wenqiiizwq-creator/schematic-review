@@ -1,85 +1,16 @@
 # 电路原理图审查方法论
 
-> V2.2。保留文件名以兼容已有引用；完整执行入口为 [SKILL.md](../SKILL.md)。
+> V2.2，保留文件名兼容已有引用。唯一执行入口为[SKILL.md](../SKILL.md)，避免多份流程漂移。
 
-## 0. 工作分层
+旧编号L0对应AC0，L1–L7对应ER1–ER7。自动候选、工程判断、覆盖记录与准出独立。
 
-AC0 负责可复现候选扫描，ER1–ER7 负责身份/判据、供电、链路、验算、平台条款、图形和
-器件数据收口。脚本同样可能出错，确定性不等于“零漏检”。对象/需求/状态覆盖与证据正确性
-共同决定审查质量。数字表示职责执行依赖，遇身份或图形疑点必须前置核实。
+- 资料、需求、页面/器件/物理脚、装配及状态：[覆盖协议](coverage-protocol.md)。
+- 计划、冷/热合并、对象/判据及状态：[计划契约](review-plan-schema.md)。
+- 身份、官方保证值和完整工况：[证据契约](datasheet-evidence-schema.md)。
+- 电源/信号/保护与新电路检查器：[逐域清单](review-checklist.md)、[检查器](checkers.md)。
+- 参数模型、容差及修改后复算：[公式与限制](wca-formulas.md)。
+- error / warning / suggestion及独立阻断、置信度、HANDOFF：[分级](severity-calibration.md)、[边界](scope-boundary.md)。
+- schema 3、新手修改步骤与简短前言：[结果契约](review-results-schema.md)、[改法](remediation-guide.md)、[报告模板](report-template.md)。
+- 历史闭环和当前输入复验：[Diff断言](diff-claims-schema.md)、[改版影响](revision-impact-schema.md)。
 
-旧标识 L0→AC0，L1–L7→ER1–ER7。Rule-01–20 保留规则身份；Rule-11 在 ER2，
-Rule-17 在复审 Diff，其余由冷/热输入决定。READY/规则执行不是最终 PASS。
-
-## 1. 基线与覆盖
-
-读 [coverage-protocol.md](coverage-protocol.md)，建立需求→实现、电路→判据、状态→响应三条
-覆盖线。受控版本、BOM/配置与对端接口决定实际审查对象。逐页、逐关键物理脚、逐轨、
-逐功能链检查；发现未列入计划的对象时扩展计划。仅 PDF 可完成有边界的图面审查，
-不能虚构网表全量覆盖。缺材料不停止已有条件的检查，也不能据此准出。
-
-## 2. 解析
-
-直接运行 `scripts/parse_netlist.py`，不要复制历史精简解析代码。
-字段、格式变体、完整性及 NC/DNP 边界见 [netlist-parsing.md](netlist-parsing.md)。
-符号声明引脚清单与实际网表节点分开；二者还须对官方完整封装定义复核。
-
-## 3. 计划和 AC0
-
-见 [review-plan-schema.md](review-plan-schema.md)、[lint-rules.md](lint-rules.md)。
-算法按节点枚举不保证功能判据完整，命名启发式也可能误触发。每个命中保留最终处置和反证。
-无命中不可代替未执行项，某颗 IC 有一条证据不能替代其余引脚证据。
-
-## 4. ER1 身份/条款
-
-读完整适用章节和 errata；正常工作范围、上下电、内部默认、模式及订货表不能省略。
-准确 MPN/封装归属优先解决，BOM 冲突可分支推进但不能认定某个字段绝对正确。
-按 [datasheet-resolution-schema.md](datasheet-resolution-schema.md) 审计/补齐具体物料资料，
-再按 [datasheet-evidence-schema.md](datasheet-evidence-schema.md) 绑定当前网表、准确物料及
-文档指纹。规划和热跑共用依赖校验；旧证据未绑定时保持待核，不用全局资料齐全替代。
-
-## 5. ER2 供电与状态
-
-建立按装配/状态有效的电源图；沿磁珠/低阻跳线追到电源器件输出或明确外部源。
-输入/地参考、负载/IO 域、峰值与启动预算、默认态/反灌/热插拔分别核。
-跨轨只是反灌候选，必须用 Ioff/注入限制/掉电容忍判定；不能凭不同轨名定罪。
-
-### 5.7 检测点取样侧（Rule-11）
-
-先定义被测量及保护目的，再核取样网络、ADC/比较器终点和反馈控制。
-检测输入存在可取源侧；验证输出有效或负载电压可取保护后。禁止将“保护后”一律判缺陷。
-控制回路不能依赖尚未使能的输出来决定首次使能，除非有独立启动条件和故障回退。
-
-## 6. ER3 链路
-
-每路 A 物理脚→网络→实贴器件→B 物理脚，复述两端方向/角色并核参考地与对端针序。
-启动、复位、时钟、检测/使能/故障上报与数据链同等重要；连通不代表时序/功能满足。
-
-## 7. ER4 验算
-
-见 [wca-formulas.md](wca-formulas.md)。模型先于公式；固定/内置反馈、有负载支路和状态
-改变都可能使通用公式失效。全角窗口对负载推荐范围，器件额定和保护配合另核。
-所有改法再次复算相关影响；未给负载/工况时提供参数选择条件，不能硬给唯一物料。
-
-## 8–10. ER5–ER7
-
-通用方向见 [review-checklist.md](review-checklist.md)，准确平台条款按项目生成。
-每页都有图形记录，关键符号逐物理脚比对；复用旧验证须同一 MPN/封装/符号版本及适用条件。
-电气损耗和额定属于原理图审查；版图/测试限制按 [scope-boundary.md](scope-boundary.md) 移交。
-
-## 11. 分级与闭环
-
-[severity-calibration.md](severity-calibration.md) 是唯一分级定义；结果与严重度/置信度/关闭
-状态独立。违背保证范围可确认 FAIL，不必声称一定失效；单板调通不能覆盖全温/批次。
-[report-template.md](report-template.md) 与 [review-results-schema.md](review-results-schema.md)
-规定逐项结果及机器校验。先统计唯一缺陷 ID，再计算准出，不能按 FAIL 检查行数重复计数。
-
-复审用 [diff-claims-schema.md](diff-claims-schema.md)；字段变化只是改动，期望物理状态才是
-闭环证据。新旧网表加参考模板两套比较，沿电源/时钟/控制依赖检查变更影响与回归。
-
-## 12–13. 迁移和验证
-
-在具备文件/Python/读图能力的 Agent 中用 SKILL.md 入口和随附 scripts，不复制旧章节简版
-脚本。无第三方 Python 包依赖；读取 PDF 需要现有提取/渲染工具，无工具时说明能力限制。
-`scripts/tests/` 的合成用例验证机械错误及结果闸门，不能证明真实设计所有问题均已被发现。
-历史报告是流程失误的证据，不能作为当前板卡缺陷已独立复核的证明。
+READY、执行一次、零命中和字段变化都不是电气通过或修复证据。

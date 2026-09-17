@@ -1,0 +1,147 @@
+{
+  "mutants": [
+    {
+      "mutation": "nominal_instead_of_corners",
+      "detected": true,
+      "returncode": 3,
+      "metrics": {
+        "total": 90,
+        "passed": 74,
+        "status_exact": 86,
+        "expected_counts": {
+          "PASS": 10,
+          "FAIL": 34,
+          "INSUFFICIENT": 46
+        },
+        "confusion": {
+          "PASS": {
+            "PASS": 10,
+            "FAIL": 0,
+            "INSUFFICIENT": 0,
+            "ERROR": 0
+          },
+          "FAIL": {
+            "PASS": 4,
+            "FAIL": 30,
+            "INSUFFICIENT": 0,
+            "ERROR": 0
+          },
+          "INSUFFICIENT": {
+            "PASS": 0,
+            "FAIL": 0,
+            "INSUFFICIENT": 46,
+            "ERROR": 0
+          }
+        },
+        "false_pass": 4,
+        "false_alarm": 0,
+        "known_defect_deferred": 0,
+        "known_good_deferred": 0,
+        "unknown_overclaimed_fail": 0,
+        "numeric_mismatches": 16,
+        "errors": 0,
+        "defect_recall": 0.8823529411764706,
+        "unknown_handling": 1.0
+      },
+      "sut_source_digest": "afc4e33502848482024d60457bd6bef43da762e6c94bd51b2183a58cceed7843",
+      "dataset_digest": "5addda6a8fc2f0cee5d78d96b06ea86354befa365ccc101ea782aaeba171bdbb",
+      "protocol_digest": "d192c7de4dab37887929a9edd42748bbd4bb1f69f960242caa1ad42bd425e73d"
+    },
+    {
+      "mutation": "first_pull_instead_of_parallel",
+      "detected": true,
+      "returncode": 3,
+      "metrics": {
+        "total": 90,
+        "passed": 82,
+        "status_exact": 88,
+        "expected_counts": {
+          "PASS": 10,
+          "FAIL": 34,
+          "INSUFFICIENT": 46
+        },
+        "confusion": {
+          "PASS": {
+            "PASS": 8,
+            "FAIL": 2,
+            "INSUFFICIENT": 0,
+            "ERROR": 0
+          },
+          "FAIL": {
+            "PASS": 0,
+            "FAIL": 34,
+            "INSUFFICIENT": 0,
+            "ERROR": 0
+          },
+          "INSUFFICIENT": {
+            "PASS": 0,
+            "FAIL": 0,
+            "INSUFFICIENT": 46,
+            "ERROR": 0
+          }
+        },
+        "false_pass": 0,
+        "false_alarm": 2,
+        "known_defect_deferred": 0,
+        "known_good_deferred": 0,
+        "unknown_overclaimed_fail": 0,
+        "numeric_mismatches": 8,
+        "errors": 0,
+        "defect_recall": 1.0,
+        "unknown_handling": 1.0
+      },
+      "sut_source_digest": "cb3f763308d6a249adef04c548c730aeb9e7321a72f4d38032767323d5f31619",
+      "dataset_digest": "5addda6a8fc2f0cee5d78d96b06ea86354befa365ccc101ea782aaeba171bdbb",
+      "protocol_digest": "d192c7de4dab37887929a9edd42748bbd4bb1f69f960242caa1ad42bd425e73d"
+    },
+    {
+      "mutation": "always_pass",
+      "detected": true,
+      "returncode": 3,
+      "metrics": {
+        "total": 90,
+        "passed": 0,
+        "status_exact": 10,
+        "expected_counts": {
+          "PASS": 10,
+          "FAIL": 34,
+          "INSUFFICIENT": 46
+        },
+        "confusion": {
+          "PASS": {
+            "PASS": 10,
+            "FAIL": 0,
+            "INSUFFICIENT": 0,
+            "ERROR": 0
+          },
+          "FAIL": {
+            "PASS": 34,
+            "FAIL": 0,
+            "INSUFFICIENT": 0,
+            "ERROR": 0
+          },
+          "INSUFFICIENT": {
+            "PASS": 46,
+            "FAIL": 0,
+            "INSUFFICIENT": 0,
+            "ERROR": 0
+          }
+        },
+        "false_pass": 80,
+        "false_alarm": 0,
+        "known_defect_deferred": 0,
+        "known_good_deferred": 0,
+        "unknown_overclaimed_fail": 0,
+        "numeric_mismatches": 40,
+        "errors": 0,
+        "defect_recall": 0.0,
+        "unknown_handling": 0.0
+      },
+      "sut_source_digest": "442c9e17ce757a942c028749fcd7a07ba53bf1aa8baa6e7466c1e852822936cd",
+      "dataset_digest": "5addda6a8fc2f0cee5d78d96b06ea86354befa365ccc101ea782aaeba171bdbb",
+      "protocol_digest": "d192c7de4dab37887929a9edd42748bbd4bb1f69f960242caa1ad42bd425e73d"
+    }
+  ],
+  "all_detected": true,
+  "scope": "Three deliberate code faults, dev partition only; not an exhaustive fault model"
+}

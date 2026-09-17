@@ -1,0 +1,2968 @@
+{
+  "cases": [
+    {
+      "check": {
+        "citation": "Independent synthetic circuit: Simple divider, asymmetric signed bias",
+        "depends_on": [
+          "R1",
+          "R2",
+          "U1"
+        ],
+        "divider_model": {
+          "bias_current_a": {
+            "max": 3e-06,
+            "min": -2e-06
+          },
+          "ignored_nodes": {
+            "U1.1": "Synthetic FB input, all current in bias_current_a."
+          },
+          "reference_net": "GND",
+          "source_net": "VOUT_TEST"
+        },
+        "expected": {
+          "max": 2.6,
+          "min": 2.2
+        },
+        "id": "IR01",
+        "kind": "divider",
+        "net": "FB_TEST",
+        "node": "U1.1",
+        "rule": "Rule-08",
+        "vref": {
+          "max": 0.606,
+          "min": 0.594,
+          "typ": 0.6
+        }
+      },
+      "db": {
+        "nets": {
+          "FB_TEST": [
+            "U1.1",
+            "R1.2",
+            "R2.1"
+          ],
+          "GND": [
+            "R2.2"
+          ],
+          "VOUT_TEST": [
+            "R1.1"
+          ]
+        },
+        "parts": {
+          "R1": {
+            "nc": false,
+            "value": "27000R/2%"
+          },
+          "R2": {
+            "nc": false,
+            "value": "9000R/1%"
+          },
+          "U1": {
+            "nc": false,
+            "value": "SYNTHETIC-INDEPENDENT-FB"
+          }
+        },
+        "pin2net": {
+          "R1.1": "VOUT_TEST",
+          "R1.2": "FB_TEST",
+          "R2.1": "FB_TEST",
+          "R2.2": "GND",
+          "U1.1": "FB_TEST"
+        },
+        "pinname": {
+          "U1.1": "FB"
+        },
+        "pintype": {},
+        "pseudo_nets": [],
+        "ref2page": {}
+      },
+      "description": "Simple divider, asymmetric signed bias",
+      "expected": {
+        "calculation": {
+          "max": 2.561710909090909,
+          "min": 2.2701493069306933,
+          "typ": 2.4
+        },
+        "review_result": "PASS"
+      },
+      "id": "IR01",
+      "oracle_basis": "KCL: O=F*(1+Ru/Rl)+Ib*Ru. Exact rational independent endpoint enumeration; typ has zero bias.",
+      "resistor_definition": [
+        {
+          "a": "VOUT_TEST",
+          "b": "FB_TEST",
+          "ohm": "27000",
+          "populated": true,
+          "ref": "R1",
+          "tol": ".02",
+          "value": "27000R/2%"
+        },
+        {
+          "a": "FB_TEST",
+          "b": "GND",
+          "ohm": "9000",
+          "populated": true,
+          "ref": "R2",
+          "tol": "0.01",
+          "value": "9000R/1%"
+        }
+      ]
+    },
+    {
+      "check": {
+        "citation": "Independent synthetic circuit: Nominal correct, guaranteed window fails",
+        "depends_on": [
+          "R1",
+          "R2",
+          "U1"
+        ],
+        "divider_model": {
+          "bias_current_a": {
+            "max": 0,
+            "min": 0
+          },
+          "ignored_nodes": {
+            "U1.1": "Synthetic FB input, all current in bias_current_a."
+          },
+          "reference_net": "GND",
+          "source_net": "VOUT_TEST"
+        },
+        "expected": {
+          "max": 2.41,
+          "min": 2.39
+        },
+        "id": "IR02",
+        "kind": "divider",
+        "net": "FB_TEST",
+        "node": "U1.1",
+        "rule": "Rule-08",
+        "vref": {
+          "max": 0.606,
+          "min": 0.594,
+          "typ": 0.6
+        }
+      },
+      "db": {
+        "nets": {
+          "FB_TEST": [
+            "U1.1",
+            "R1.2",
+            "R2.1"
+          ],
+          "GND": [
+            "R2.2"
+          ],
+          "VOUT_TEST": [
+            "R1.1"
+          ]
+        },
+        "parts": {
+          "R1": {
+            "nc": false,
+            "value": "27000R/2%"
+          },
+          "R2": {
+            "nc": false,
+            "value": "9000R/1%"
+          },
+          "U1": {
+            "nc": false,
+            "value": "SYNTHETIC-INDEPENDENT-FB"
+          }
+        },
+        "pin2net": {
+          "R1.1": "VOUT_TEST",
+          "R1.2": "FB_TEST",
+          "R2.1": "FB_TEST",
+          "R2.2": "GND",
+          "U1.1": "FB_TEST"
+        },
+        "pinname": {
+          "U1.1": "FB"
+        },
+        "pintype": {},
+        "pseudo_nets": [],
+        "ref2page": {}
+      },
+      "description": "Nominal correct, guaranteed window fails",
+      "expected": {
+        "calculation": {
+          "max": 2.479090909090909,
+          "min": 2.323069306930693,
+          "typ": 2.4
+        },
+        "review_result": "FAIL"
+      },
+      "id": "IR02",
+      "oracle_basis": "KCL: O=F*(1+Ru/Rl)+Ib*Ru. Exact rational independent endpoint enumeration; typ has zero bias.",
+      "resistor_definition": [
+        {
+          "a": "VOUT_TEST",
+          "b": "FB_TEST",
+          "ohm": "27000",
+          "populated": true,
+          "ref": "R1",
+          "tol": ".02",
+          "value": "27000R/2%"
+        },
+        {
+          "a": "FB_TEST",
+          "b": "GND",
+          "ohm": "9000",
+          "populated": true,
+          "ref": "R2",
+          "tol": "0.01",
+          "value": "9000R/1%"
+        }
+      ]
+    },
+    {
+      "check": {
+        "citation": "Independent synthetic circuit: Shared upper series trunk",
+        "depends_on": [
+          "R1",
+          "R2",
+          "R3",
+          "R4",
+          "U1"
+        ],
+        "divider_model": {
+          "bias_current_a": {
+            "max": 0,
+            "min": 0
+          },
+          "ignored_nodes": {
+            "U1.1": "Synthetic FB input, all current in bias_current_a."
+          },
+          "reference_net": "GND",
+          "source_net": "VOUT_TEST"
+        },
+        "expected": {
+          "max": 1.86,
+          "min": 1.65
+        },
+        "id": "IR03",
+        "kind": "divider",
+        "net": "FB_TEST",
+        "node": "U1.1",
+        "rule": "Rule-08",
+        "vref": {
+          "max": 0.707,
+          "min": 0.693,
+          "typ": 0.7
+        }
+      },
+      "db": {
+        "nets": {
+          "FB_TEST": [
+            "U1.1",
+            "R1.1",
+            "R4.1"
+          ],
+          "GND": [
+            "R4.2"
+          ],
+          "VOUT_TEST": [
+            "R2.2",
+            "R3.2"
+          ],
+          "X": [
+            "R1.2",
+            "R2.1",
+            "R3.1"
+          ]
+        },
+        "parts": {
+          "R1": {
+            "nc": false,
+            "value": "6000R/3%"
+          },
+          "R2": {
+            "nc": false,
+            "value": "12000R/1%"
+          },
+          "R3": {
+            "nc": false,
+            "value": "12000R/1%"
+          },
+          "R4": {
+            "nc": false,
+            "value": "8000R/2%"
+          },
+          "U1": {
+            "nc": false,
+            "value": "SYNTHETIC-INDEPENDENT-FB"
+          }
+        },
+        "pin2net": {
+          "R1.1": "FB_TEST",
+          "R1.2": "X",
+          "R2.1": "X",
+          "R2.2": "VOUT_TEST",
+          "R3.1": "X",
+          "R3.2": "VOUT_TEST",
+          "R4.1": "FB_TEST",
+          "R4.2": "GND",
+          "U1.1": "FB_TEST"
+        },
+        "pinname": {
+          "U1.1": "FB"
+        },
+        "pintype": {},
+        "pseudo_nets": [],
+        "ref2page": {}
+      },
+      "description": "Shared upper series trunk",
+      "expected": {
+        "calculation": {
+          "max": 1.8107857142857142,
+          "min": 1.6917352941176471,
+          "typ": 1.75
+        },
+        "review_result": "PASS"
+      },
+      "id": "IR03",
+      "oracle_basis": "Ru=R1+(R2||R3), Rl=R4. KCL: O=F*(1+Ru/Rl)+Ib*Ru. Exact rational independent endpoint enumeration; typ has zero bias.",
+      "resistor_definition": [
+        {
+          "a": "FB_TEST",
+          "b": "X",
+          "ohm": "6000",
+          "populated": true,
+          "ref": "R1",
+          "tol": ".03",
+          "value": "6000R/3%"
+        },
+        {
+          "a": "X",
+          "b": "VOUT_TEST",
+          "ohm": "12000",
+          "populated": true,
+          "ref": "R2",
+          "tol": "0.01",
+          "value": "12000R/1%"
+        },
+        {
+          "a": "X",
+          "b": "VOUT_TEST",
+          "ohm": "12000",
+          "populated": true,
+          "ref": "R3",
+          "tol": "0.01",
+          "value": "12000R/1%"
+        },
+        {
+          "a": "FB_TEST",
+          "b": "GND",
+          "ohm": "8000",
+          "populated": true,
+          "ref": "R4",
+          "tol": ".02",
+          "value": "8000R/2%"
+        }
+      ]
+    },
+    {
+      "check": {
+        "citation": "Independent synthetic circuit: Shared lower return trunk and input bias",
+        "depends_on": [
+          "R1",
+          "R2",
+          "R3",
+          "R4",
+          "U1"
+        ],
+        "divider_model": {
+          "bias_current_a": {
+            "max": 4e-06,
+            "min": -2e-06
+          },
+          "ignored_nodes": {
+            "U1.1": "Synthetic FB input, all current in bias_current_a."
+          },
+          "reference_net": "GND",
+          "source_net": "VOUT_TEST"
+        },
+        "expected": {
+          "max": 2.87,
+          "min": 2.54
+        },
+        "id": "IR04",
+        "kind": "divider",
+        "net": "FB_TEST",
+        "node": "U1.1",
+        "rule": "Rule-08",
+        "vref": {
+          "max": 0.909,
+          "min": 0.891,
+          "typ": 0.9
+        }
+      },
+      "db": {
+        "nets": {
+          "FB_TEST": [
+            "U1.1",
+            "R1.2",
+            "R2.1",
+            "R3.1"
+          ],
+          "GND": [
+            "R4.2"
+          ],
+          "VOUT_TEST": [
+            "R1.1"
+          ],
+          "X": [
+            "R2.2",
+            "R3.2",
+            "R4.1"
+          ]
+        },
+        "parts": {
+          "R1": {
+            "nc": false,
+            "value": "20000R/1%"
+          },
+          "R2": {
+            "nc": false,
+            "value": "15000R/1%"
+          },
+          "R3": {
+            "nc": false,
+            "value": "15000R/1%"
+          },
+          "R4": {
+            "nc": false,
+            "value": "2500R/1%"
+          },
+          "U1": {
+            "nc": false,
+            "value": "SYNTHETIC-INDEPENDENT-FB"
+          }
+        },
+        "pin2net": {
+          "R1.1": "VOUT_TEST",
+          "R1.2": "FB_TEST",
+          "R2.1": "FB_TEST",
+          "R2.2": "X",
+          "R3.1": "FB_TEST",
+          "R3.2": "X",
+          "R4.1": "X",
+          "R4.2": "GND",
+          "U1.1": "FB_TEST"
+        },
+        "pinname": {
+          "U1.1": "FB"
+        },
+        "pintype": {},
+        "pseudo_nets": [],
+        "ref2page": {}
+      },
+      "description": "Shared lower return trunk and input bias",
+      "expected": {
+        "calculation": {
+          "max": 2.8445272727272726,
+          "min": 2.5981128712871286,
+          "typ": 2.7
+        },
+        "review_result": "PASS"
+      },
+      "id": "IR04",
+      "oracle_basis": "Rl=(R2||R3)+R4, Ru=R1. KCL: O=F*(1+Ru/Rl)+Ib*Ru. Exact rational independent endpoint enumeration; typ has zero bias.",
+      "resistor_definition": [
+        {
+          "a": "VOUT_TEST",
+          "b": "FB_TEST",
+          "ohm": "20000",
+          "populated": true,
+          "ref": "R1",
+          "tol": "0.01",
+          "value": "20000R/1%"
+        },
+        {
+          "a": "FB_TEST",
+          "b": "X",
+          "ohm": "15000",
+          "populated": true,
+          "ref": "R2",
+          "tol": "0.01",
+          "value": "15000R/1%"
+        },
+        {
+          "a": "FB_TEST",
+          "b": "X",
+          "ohm": "15000",
+          "populated": true,
+          "ref": "R3",
+          "tol": "0.01",
+          "value": "15000R/1%"
+        },
+        {
+          "a": "X",
+          "b": "GND",
+          "ohm": "2500",
+          "populated": true,
+          "ref": "R4",
+          "tol": "0.01",
+          "value": "2500R/1%"
+        }
+      ]
+    },
+    {
+      "check": {
+        "citation": "Independent synthetic circuit: Unbalanced mesh with signed input bias",
+        "depends_on": [
+          "R1",
+          "R2",
+          "R3",
+          "R4",
+          "R5",
+          "U1"
+        ],
+        "divider_model": {
+          "bias_current_a": {
+            "max": 5e-06,
+            "min": -2e-06
+          },
+          "ignored_nodes": {
+            "U1.1": "Synthetic FB input, all current in bias_current_a."
+          },
+          "reference_net": "GND",
+          "source_net": "VOUT_TEST"
+        },
+        "expected": {
+          "max": 1.56,
+          "min": 1.37
+        },
+        "id": "IR05",
+        "kind": "divider",
+        "net": "FB_TEST",
+        "node": "U1.1",
+        "rule": "Rule-08",
+        "vref": {
+          "max": 0.6565,
+          "min": 0.6435,
+          "typ": 0.65
+        }
+      },
+      "db": {
+        "nets": {
+          "A": [
+            "R1.2",
+            "R2.1",
+            "R5.1"
+          ],
+          "FB_TEST": [
+            "U1.1",
+            "R3.2",
+            "R4.1",
+            "R5.2"
+          ],
+          "GND": [
+            "R2.2",
+            "R4.2"
+          ],
+          "VOUT_TEST": [
+            "R1.1",
+            "R3.1"
+          ]
+        },
+        "parts": {
+          "R1": {
+            "nc": false,
+            "value": "10000R/1%"
+          },
+          "R2": {
+            "nc": false,
+            "value": "30000R/1%"
+          },
+          "R3": {
+            "nc": false,
+            "value": "20000R/1%"
+          },
+          "R4": {
+            "nc": false,
+            "value": "10000R/1%"
+          },
+          "R5": {
+            "nc": false,
+            "value": "10000R/1%"
+          },
+          "U1": {
+            "nc": false,
+            "value": "SYNTHETIC-INDEPENDENT-FB"
+          }
+        },
+        "pin2net": {
+          "R1.1": "VOUT_TEST",
+          "R1.2": "A",
+          "R2.1": "A",
+          "R2.2": "GND",
+          "R3.1": "VOUT_TEST",
+          "R3.2": "FB_TEST",
+          "R4.1": "FB_TEST",
+          "R4.2": "GND",
+          "R5.1": "A",
+          "R5.2": "FB_TEST",
+          "U1.1": "FB_TEST"
+        },
+        "pinname": {
+          "U1.1": "FB"
+        },
+        "pintype": {},
+        "pseudo_nets": [],
+        "ref2page": {}
+      },
+      "description": "Unbalanced mesh with signed input bias",
+      "expected": {
+        "calculation": {
+          "max": 1.5360795581885573,
+          "min": 1.3977814418741645,
+          "typ": 1.45
+        },
+        "review_result": "PASS"
+      },
+      "id": "IR05",
+      "oracle_basis": "Eliminate A from KCL(A) and KCL(F): O=[F*(g3+g4+g5-g5^2/S)+Ib]/(g3+g1*g5/S), S=g1+g2+g5. Nominal gain=29/13, bias coefficient=140000/13 ohms.",
+      "resistor_definition": [
+        {
+          "a": "VOUT_TEST",
+          "b": "A",
+          "ohm": "10000",
+          "populated": true,
+          "ref": "R1",
+          "tol": "0.01",
+          "value": "10000R/1%"
+        },
+        {
+          "a": "A",
+          "b": "GND",
+          "ohm": "30000",
+          "populated": true,
+          "ref": "R2",
+          "tol": "0.01",
+          "value": "30000R/1%"
+        },
+        {
+          "a": "VOUT_TEST",
+          "b": "FB_TEST",
+          "ohm": "20000",
+          "populated": true,
+          "ref": "R3",
+          "tol": "0.01",
+          "value": "20000R/1%"
+        },
+        {
+          "a": "FB_TEST",
+          "b": "GND",
+          "ohm": "10000",
+          "populated": true,
+          "ref": "R4",
+          "tol": "0.01",
+          "value": "10000R/1%"
+        },
+        {
+          "a": "A",
+          "b": "FB_TEST",
+          "ohm": "10000",
+          "populated": true,
+          "ref": "R5",
+          "tol": "0.01",
+          "value": "10000R/1%"
+        }
+      ]
+    },
+    {
+      "check": {
+        "citation": "Independent synthetic circuit: Mesh nominal passes but tolerance window fails",
+        "depends_on": [
+          "R1",
+          "R2",
+          "R3",
+          "R4",
+          "R5",
+          "U1"
+        ],
+        "divider_model": {
+          "bias_current_a": {
+            "max": 0,
+            "min": 0
+          },
+          "ignored_nodes": {
+            "U1.1": "Synthetic FB input, all current in bias_current_a."
+          },
+          "reference_net": "GND",
+          "source_net": "VOUT_TEST"
+        },
+        "expected": {
+          "max": 1.46,
+          "min": 1.44
+        },
+        "id": "IR06",
+        "kind": "divider",
+        "net": "FB_TEST",
+        "node": "U1.1",
+        "rule": "Rule-08",
+        "vref": {
+          "max": 0.6565,
+          "min": 0.6435,
+          "typ": 0.65
+        }
+      },
+      "db": {
+        "nets": {
+          "A": [
+            "R1.2",
+            "R2.1",
+            "R5.1"
+          ],
+          "FB_TEST": [
+            "U1.1",
+            "R3.2",
+            "R4.1",
+            "R5.2"
+          ],
+          "GND": [
+            "R2.2",
+            "R4.2"
+          ],
+          "VOUT_TEST": [
+            "R1.1",
+            "R3.1"
+          ]
+        },
+        "parts": {
+          "R1": {
+            "nc": false,
+            "value": "10000R/1%"
+          },
+          "R2": {
+            "nc": false,
+            "value": "30000R/1%"
+          },
+          "R3": {
+            "nc": false,
+            "value": "20000R/1%"
+          },
+          "R4": {
+            "nc": false,
+            "value": "10000R/1%"
+          },
+          "R5": {
+            "nc": false,
+            "value": "10000R/1%"
+          },
+          "U1": {
+            "nc": false,
+            "value": "SYNTHETIC-INDEPENDENT-FB"
+          }
+        },
+        "pin2net": {
+          "R1.1": "VOUT_TEST",
+          "R1.2": "A",
+          "R2.1": "A",
+          "R2.2": "GND",
+          "R3.1": "VOUT_TEST",
+          "R3.2": "FB_TEST",
+          "R4.1": "FB_TEST",
+          "R4.2": "GND",
+          "R5.1": "A",
+          "R5.2": "FB_TEST",
+          "U1.1": "FB_TEST"
+        },
+        "pinname": {
+          "U1.1": "FB"
+        },
+        "pintype": {},
+        "pseudo_nets": [],
+        "ref2page": {}
+      },
+      "description": "Mesh nominal passes but tolerance window fails",
+      "expected": {
+        "calculation": {
+          "max": 1.4816226148216063,
+          "min": 1.4190766363821736,
+          "typ": 1.45
+        },
+        "review_result": "FAIL"
+      },
+      "id": "IR06",
+      "oracle_basis": "Eliminate A from KCL(A) and KCL(F): O=[F*(g3+g4+g5-g5^2/S)+Ib]/(g3+g1*g5/S), S=g1+g2+g5. Nominal gain=29/13, bias coefficient=140000/13 ohms.",
+      "resistor_definition": [
+        {
+          "a": "VOUT_TEST",
+          "b": "A",
+          "ohm": "10000",
+          "populated": true,
+          "ref": "R1",
+          "tol": "0.01",
+          "value": "10000R/1%"
+        },
+        {
+          "a": "A",
+          "b": "GND",
+          "ohm": "30000",
+          "populated": true,
+          "ref": "R2",
+          "tol": "0.01",
+          "value": "30000R/1%"
+        },
+        {
+          "a": "VOUT_TEST",
+          "b": "FB_TEST",
+          "ohm": "20000",
+          "populated": true,
+          "ref": "R3",
+          "tol": "0.01",
+          "value": "20000R/1%"
+        },
+        {
+          "a": "FB_TEST",
+          "b": "GND",
+          "ohm": "10000",
+          "populated": true,
+          "ref": "R4",
+          "tol": "0.01",
+          "value": "10000R/1%"
+        },
+        {
+          "a": "A",
+          "b": "FB_TEST",
+          "ohm": "10000",
+          "populated": true,
+          "ref": "R5",
+          "tol": "0.01",
+          "value": "10000R/1%"
+        }
+      ]
+    },
+    {
+      "check": {
+        "citation": "Independent synthetic circuit: Large negative input current reverses resistor sensitivity",
+        "depends_on": [
+          "R1",
+          "R2",
+          "R3",
+          "R4",
+          "R5",
+          "U1"
+        ],
+        "divider_model": {
+          "bias_current_a": {
+            "max": -6e-05,
+            "min": -0.0001
+          },
+          "ignored_nodes": {
+            "U1.1": "Synthetic FB input, all current in bias_current_a."
+          },
+          "reference_net": "GND",
+          "source_net": "VOUT_TEST"
+        },
+        "expected": {
+          "max": 1.6,
+          "min": 1.3
+        },
+        "id": "IR07",
+        "kind": "divider",
+        "net": "FB_TEST",
+        "node": "U1.1",
+        "rule": "Rule-08",
+        "vref": {
+          "max": 0.6565,
+          "min": 0.6435,
+          "typ": 0.65
+        }
+      },
+      "db": {
+        "nets": {
+          "A": [
+            "R1.2",
+            "R2.1",
+            "R5.1"
+          ],
+          "FB_TEST": [
+            "U1.1",
+            "R3.2",
+            "R4.1",
+            "R5.2"
+          ],
+          "GND": [
+            "R2.2",
+            "R4.2"
+          ],
+          "VOUT_TEST": [
+            "R1.1",
+            "R3.1"
+          ]
+        },
+        "parts": {
+          "R1": {
+            "nc": false,
+            "value": "10000R/1%"
+          },
+          "R2": {
+            "nc": false,
+            "value": "30000R/1%"
+          },
+          "R3": {
+            "nc": false,
+            "value": "20000R/1%"
+          },
+          "R4": {
+            "nc": false,
+            "value": "10000R/1%"
+          },
+          "R5": {
+            "nc": false,
+            "value": "10000R/1%"
+          },
+          "U1": {
+            "nc": false,
+            "value": "SYNTHETIC-INDEPENDENT-FB"
+          }
+        },
+        "pin2net": {
+          "R1.1": "VOUT_TEST",
+          "R1.2": "A",
+          "R2.1": "A",
+          "R2.2": "GND",
+          "R3.1": "VOUT_TEST",
+          "R3.2": "FB_TEST",
+          "R4.1": "FB_TEST",
+          "R4.2": "GND",
+          "R5.1": "A",
+          "R5.2": "FB_TEST",
+          "U1.1": "FB_TEST"
+        },
+        "pinname": {
+          "U1.1": "FB"
+        },
+        "pintype": {},
+        "pseudo_nets": [],
+        "ref2page": {}
+      },
+      "description": "Large negative input current reverses resistor sensitivity",
+      "expected": {
+        "calculation": {
+          "max": 0.8284106752297264,
+          "min": 0.3478076923076923,
+          "typ": 1.45
+        },
+        "review_result": "FAIL"
+      },
+      "id": "IR07",
+      "oracle_basis": "Eliminate A from KCL(A) and KCL(F): O=[F*(g3+g4+g5-g5^2/S)+Ib]/(g3+g1*g5/S), S=g1+g2+g5. Nominal gain=29/13, bias coefficient=140000/13 ohms.",
+      "resistor_definition": [
+        {
+          "a": "VOUT_TEST",
+          "b": "A",
+          "ohm": "10000",
+          "populated": true,
+          "ref": "R1",
+          "tol": "0.01",
+          "value": "10000R/1%"
+        },
+        {
+          "a": "A",
+          "b": "GND",
+          "ohm": "30000",
+          "populated": true,
+          "ref": "R2",
+          "tol": "0.01",
+          "value": "30000R/1%"
+        },
+        {
+          "a": "VOUT_TEST",
+          "b": "FB_TEST",
+          "ohm": "20000",
+          "populated": true,
+          "ref": "R3",
+          "tol": "0.01",
+          "value": "20000R/1%"
+        },
+        {
+          "a": "FB_TEST",
+          "b": "GND",
+          "ohm": "10000",
+          "populated": true,
+          "ref": "R4",
+          "tol": "0.01",
+          "value": "10000R/1%"
+        },
+        {
+          "a": "A",
+          "b": "FB_TEST",
+          "ohm": "10000",
+          "populated": true,
+          "ref": "R5",
+          "tol": "0.01",
+          "value": "10000R/1%"
+        }
+      ]
+    },
+    {
+      "check": {
+        "citation": "Independent synthetic circuit: Six internal nodes, three row resistor grid",
+        "depends_on": [
+          "R1",
+          "R10",
+          "R11",
+          "R12",
+          "R13",
+          "R2",
+          "R3",
+          "R4",
+          "R5",
+          "R6",
+          "R7",
+          "R8",
+          "R9",
+          "U1"
+        ],
+        "divider_model": {
+          "bias_current_a": {
+            "max": 0,
+            "min": 0
+          },
+          "ignored_nodes": {
+            "U1.1": "Synthetic FB input, all current in bias_current_a."
+          },
+          "reference_net": "GND",
+          "source_net": "VOUT_TEST"
+        },
+        "expected": {
+          "max": 2.731,
+          "min": 2.669
+        },
+        "id": "IR08",
+        "kind": "divider",
+        "net": "FB_TEST",
+        "node": "U1.1",
+        "rule": "Rule-08",
+        "vref": {
+          "max": 0.91,
+          "min": 0.89,
+          "typ": 0.9
+        }
+      },
+      "db": {
+        "nets": {
+          "A0": [
+            "R1.2",
+            "R2.1",
+            "R10.1"
+          ],
+          "A1": [
+            "R4.2",
+            "R5.1",
+            "R10.2",
+            "R12.1"
+          ],
+          "A2": [
+            "R7.2",
+            "R8.1",
+            "R12.2"
+          ],
+          "B0": [
+            "R2.2",
+            "R3.1",
+            "R11.1"
+          ],
+          "B2": [
+            "R8.2",
+            "R9.1",
+            "R13.2"
+          ],
+          "FB_TEST": [
+            "U1.1",
+            "R5.2",
+            "R6.1",
+            "R11.2",
+            "R13.1"
+          ],
+          "GND": [
+            "R3.2",
+            "R6.2",
+            "R9.2"
+          ],
+          "VOUT_TEST": [
+            "R1.1",
+            "R4.1",
+            "R7.1"
+          ]
+        },
+        "parts": {
+          "R1": {
+            "nc": false,
+            "value": "1000R/0%"
+          },
+          "R10": {
+            "nc": false,
+            "value": "7000R/0%"
+          },
+          "R11": {
+            "nc": false,
+            "value": "11000R/0%"
+          },
+          "R12": {
+            "nc": false,
+            "value": "7000R/0%"
+          },
+          "R13": {
+            "nc": false,
+            "value": "11000R/0%"
+          },
+          "R2": {
+            "nc": false,
+            "value": "1000R/0%"
+          },
+          "R3": {
+            "nc": false,
+            "value": "1000R/0%"
+          },
+          "R4": {
+            "nc": false,
+            "value": "1000R/0%"
+          },
+          "R5": {
+            "nc": false,
+            "value": "1000R/0%"
+          },
+          "R6": {
+            "nc": false,
+            "value": "1000R/0%"
+          },
+          "R7": {
+            "nc": false,
+            "value": "1000R/0%"
+          },
+          "R8": {
+            "nc": false,
+            "value": "1000R/0%"
+          },
+          "R9": {
+            "nc": false,
+            "value": "1000R/0%"
+          },
+          "U1": {
+            "nc": false,
+            "value": "SYNTHETIC-INDEPENDENT-FB"
+          }
+        },
+        "pin2net": {
+          "R1.1": "VOUT_TEST",
+          "R1.2": "A0",
+          "R10.1": "A0",
+          "R10.2": "A1",
+          "R11.1": "B0",
+          "R11.2": "FB_TEST",
+          "R12.1": "A1",
+          "R12.2": "A2",
+          "R13.1": "FB_TEST",
+          "R13.2": "B2",
+          "R2.1": "A0",
+          "R2.2": "B0",
+          "R3.1": "B0",
+          "R3.2": "GND",
+          "R4.1": "VOUT_TEST",
+          "R4.2": "A1",
+          "R5.1": "A1",
+          "R5.2": "FB_TEST",
+          "R6.1": "FB_TEST",
+          "R6.2": "GND",
+          "R7.1": "VOUT_TEST",
+          "R7.2": "A2",
+          "R8.1": "A2",
+          "R8.2": "B2",
+          "R9.1": "B2",
+          "R9.2": "GND",
+          "U1.1": "FB_TEST"
+        },
+        "pinname": {
+          "U1.1": "FB"
+        },
+        "pintype": {},
+        "pseudo_nets": [],
+        "ref2page": {}
+      },
+      "description": "Six internal nodes, three row resistor grid",
+      "expected": {
+        "calculation": {
+          "max": 2.73,
+          "min": 2.67,
+          "typ": 2.7
+        },
+        "review_result": "PASS"
+      },
+      "id": "IR08",
+      "oracle_basis": "Equal three-resistor horizontal strings: A=2O/3, B=O/3. Vertical edges carry zero current. F=B1 => O=3F. Exact resistors, zero bias.",
+      "resistor_definition": [
+        {
+          "a": "VOUT_TEST",
+          "b": "A0",
+          "ohm": "1000",
+          "populated": true,
+          "ref": "R1",
+          "tol": "0",
+          "value": "1000R/0%"
+        },
+        {
+          "a": "A0",
+          "b": "B0",
+          "ohm": "1000",
+          "populated": true,
+          "ref": "R2",
+          "tol": "0",
+          "value": "1000R/0%"
+        },
+        {
+          "a": "B0",
+          "b": "GND",
+          "ohm": "1000",
+          "populated": true,
+          "ref": "R3",
+          "tol": "0",
+          "value": "1000R/0%"
+        },
+        {
+          "a": "VOUT_TEST",
+          "b": "A1",
+          "ohm": "1000",
+          "populated": true,
+          "ref": "R4",
+          "tol": "0",
+          "value": "1000R/0%"
+        },
+        {
+          "a": "A1",
+          "b": "FB_TEST",
+          "ohm": "1000",
+          "populated": true,
+          "ref": "R5",
+          "tol": "0",
+          "value": "1000R/0%"
+        },
+        {
+          "a": "FB_TEST",
+          "b": "GND",
+          "ohm": "1000",
+          "populated": true,
+          "ref": "R6",
+          "tol": "0",
+          "value": "1000R/0%"
+        },
+        {
+          "a": "VOUT_TEST",
+          "b": "A2",
+          "ohm": "1000",
+          "populated": true,
+          "ref": "R7",
+          "tol": "0",
+          "value": "1000R/0%"
+        },
+        {
+          "a": "A2",
+          "b": "B2",
+          "ohm": "1000",
+          "populated": true,
+          "ref": "R8",
+          "tol": "0",
+          "value": "1000R/0%"
+        },
+        {
+          "a": "B2",
+          "b": "GND",
+          "ohm": "1000",
+          "populated": true,
+          "ref": "R9",
+          "tol": "0",
+          "value": "1000R/0%"
+        },
+        {
+          "a": "A0",
+          "b": "A1",
+          "ohm": "7000",
+          "populated": true,
+          "ref": "R10",
+          "tol": "0",
+          "value": "7000R/0%"
+        },
+        {
+          "a": "B0",
+          "b": "FB_TEST",
+          "ohm": "11000",
+          "populated": true,
+          "ref": "R11",
+          "tol": "0",
+          "value": "11000R/0%"
+        },
+        {
+          "a": "A1",
+          "b": "A2",
+          "ohm": "7000",
+          "populated": true,
+          "ref": "R12",
+          "tol": "0",
+          "value": "7000R/0%"
+        },
+        {
+          "a": "FB_TEST",
+          "b": "B2",
+          "ohm": "11000",
+          "populated": true,
+          "ref": "R13",
+          "tol": "0",
+          "value": "11000R/0%"
+        }
+      ]
+    },
+    {
+      "check": {
+        "citation": "Independent synthetic circuit: DNP 1 ohm shunt must not load feedback",
+        "depends_on": [
+          "R1",
+          "R2",
+          "U1"
+        ],
+        "divider_model": {
+          "bias_current_a": {
+            "max": 0,
+            "min": 0
+          },
+          "ignored_nodes": {
+            "U1.1": "Synthetic FB input, all current in bias_current_a."
+          },
+          "reference_net": "GND",
+          "source_net": "VOUT_TEST"
+        },
+        "expected": {
+          "max": 2.6,
+          "min": 2.2
+        },
+        "id": "IR09",
+        "kind": "divider",
+        "net": "FB_TEST",
+        "node": "U1.1",
+        "rule": "Rule-08",
+        "vref": {
+          "max": 0.606,
+          "min": 0.594,
+          "typ": 0.6
+        }
+      },
+      "db": {
+        "nets": {
+          "FB_TEST": [
+            "U1.1",
+            "R1.2",
+            "R2.1",
+            "R99.1"
+          ],
+          "GND": [
+            "R2.2",
+            "R99.2"
+          ],
+          "VOUT_TEST": [
+            "R1.1"
+          ]
+        },
+        "parts": {
+          "R1": {
+            "nc": false,
+            "value": "27000R/2%"
+          },
+          "R2": {
+            "nc": false,
+            "value": "9000R/1%"
+          },
+          "R99": {
+            "nc": true,
+            "value": "1R/1%"
+          },
+          "U1": {
+            "nc": false,
+            "value": "SYNTHETIC-INDEPENDENT-FB"
+          }
+        },
+        "pin2net": {
+          "R1.1": "VOUT_TEST",
+          "R1.2": "FB_TEST",
+          "R2.1": "FB_TEST",
+          "R2.2": "GND",
+          "R99.1": "FB_TEST",
+          "R99.2": "GND",
+          "U1.1": "FB_TEST"
+        },
+        "pinname": {
+          "U1.1": "FB"
+        },
+        "pintype": {},
+        "pseudo_nets": [],
+        "ref2page": {}
+      },
+      "description": "DNP 1 ohm shunt must not load feedback",
+      "expected": {
+        "calculation": {
+          "max": 2.479090909090909,
+          "min": 2.323069306930693,
+          "typ": 2.4
+        },
+        "review_result": "PASS"
+      },
+      "id": "IR09",
+      "oracle_basis": "DNP is open circuit. KCL: O=F*(1+Ru/Rl)+Ib*Ru. Exact rational independent endpoint enumeration; typ has zero bias.",
+      "resistor_definition": [
+        {
+          "a": "VOUT_TEST",
+          "b": "FB_TEST",
+          "ohm": "27000",
+          "populated": true,
+          "ref": "R1",
+          "tol": ".02",
+          "value": "27000R/2%"
+        },
+        {
+          "a": "FB_TEST",
+          "b": "GND",
+          "ohm": "9000",
+          "populated": true,
+          "ref": "R2",
+          "tol": "0.01",
+          "value": "9000R/1%"
+        },
+        {
+          "a": "FB_TEST",
+          "b": "GND",
+          "ohm": "1",
+          "populated": false,
+          "ref": "R99",
+          "tol": "0.01",
+          "value": "1R/1%"
+        }
+      ]
+    },
+    {
+      "check": {
+        "citation": "Independent synthetic circuit: Only source arm is DNP",
+        "depends_on": [
+          "R2",
+          "U1"
+        ],
+        "divider_model": {
+          "bias_current_a": {
+            "max": 0,
+            "min": 0
+          },
+          "ignored_nodes": {
+            "U1.1": "Synthetic FB input, all current in bias_current_a."
+          },
+          "reference_net": "GND",
+          "source_net": "VOUT_TEST"
+        },
+        "expected": {
+          "max": 2.6,
+          "min": 2.2
+        },
+        "id": "IR10",
+        "kind": "divider",
+        "net": "FB_TEST",
+        "node": "U1.1",
+        "rule": "Rule-08",
+        "vref": {
+          "max": 0.606,
+          "min": 0.594,
+          "typ": 0.6
+        }
+      },
+      "db": {
+        "nets": {
+          "FB_TEST": [
+            "U1.1",
+            "R1.2",
+            "R2.1"
+          ],
+          "GND": [
+            "R2.2"
+          ],
+          "VOUT_TEST": [
+            "R1.1"
+          ]
+        },
+        "parts": {
+          "R1": {
+            "nc": true,
+            "value": "27000R/2%"
+          },
+          "R2": {
+            "nc": false,
+            "value": "9000R/1%"
+          },
+          "U1": {
+            "nc": false,
+            "value": "SYNTHETIC-INDEPENDENT-FB"
+          }
+        },
+        "pin2net": {
+          "R1.1": "VOUT_TEST",
+          "R1.2": "FB_TEST",
+          "R2.1": "FB_TEST",
+          "R2.2": "GND",
+          "U1.1": "FB_TEST"
+        },
+        "pinname": {
+          "U1.1": "FB"
+        },
+        "pintype": {},
+        "pseudo_nets": [],
+        "ref2page": {}
+      },
+      "description": "Only source arm is DNP",
+      "expected": {
+        "review_result": "INSUFFICIENT"
+      },
+      "id": "IR10",
+      "oracle_basis": "No conducting O-F path; output cannot control positive reference.",
+      "resistor_definition": [
+        {
+          "a": "VOUT_TEST",
+          "b": "FB_TEST",
+          "ohm": "27000",
+          "populated": false,
+          "ref": "R1",
+          "tol": ".02",
+          "value": "27000R/2%"
+        },
+        {
+          "a": "FB_TEST",
+          "b": "GND",
+          "ohm": "9000",
+          "populated": true,
+          "ref": "R2",
+          "tol": "0.01",
+          "value": "9000R/1%"
+        }
+      ]
+    },
+    {
+      "check": {
+        "citation": "Independent synthetic circuit: Missing upper resistor tolerance",
+        "depends_on": [
+          "R1",
+          "R2",
+          "U1"
+        ],
+        "divider_model": {
+          "bias_current_a": {
+            "max": 0,
+            "min": 0
+          },
+          "ignored_nodes": {
+            "U1.1": "Synthetic FB input, all current in bias_current_a."
+          },
+          "reference_net": "GND",
+          "source_net": "VOUT_TEST"
+        },
+        "expected": {
+          "max": 2.6,
+          "min": 2.2
+        },
+        "id": "IR11",
+        "kind": "divider",
+        "net": "FB_TEST",
+        "node": "U1.1",
+        "rule": "Rule-08",
+        "vref": {
+          "max": 0.606,
+          "min": 0.594,
+          "typ": 0.6
+        }
+      },
+      "db": {
+        "nets": {
+          "FB_TEST": [
+            "U1.1",
+            "R1.2",
+            "R2.1"
+          ],
+          "GND": [
+            "R2.2"
+          ],
+          "VOUT_TEST": [
+            "R1.1"
+          ]
+        },
+        "parts": {
+          "R1": {
+            "nc": false,
+            "value": "27000R"
+          },
+          "R2": {
+            "nc": false,
+            "value": "9000R/1%"
+          },
+          "U1": {
+            "nc": false,
+            "value": "SYNTHETIC-INDEPENDENT-FB"
+          }
+        },
+        "pin2net": {
+          "R1.1": "VOUT_TEST",
+          "R1.2": "FB_TEST",
+          "R2.1": "FB_TEST",
+          "R2.2": "GND",
+          "U1.1": "FB_TEST"
+        },
+        "pinname": {
+          "U1.1": "FB"
+        },
+        "pintype": {},
+        "pseudo_nets": [],
+        "ref2page": {}
+      },
+      "description": "Missing upper resistor tolerance",
+      "expected": {
+        "review_result": "INSUFFICIENT"
+      },
+      "id": "IR11",
+      "oracle_basis": "Nominal resistance alone gives no guaranteed window.",
+      "resistor_definition": [
+        {
+          "a": "VOUT_TEST",
+          "b": "FB_TEST",
+          "ohm": "27000",
+          "populated": true,
+          "ref": "R1",
+          "tol": null,
+          "value": "27000R"
+        },
+        {
+          "a": "FB_TEST",
+          "b": "GND",
+          "ohm": "9000",
+          "populated": true,
+          "ref": "R2",
+          "tol": "0.01",
+          "value": "9000R/1%"
+        }
+      ]
+    },
+    {
+      "check": {
+        "citation": "Independent synthetic circuit: Missing loaded bridge resistor tolerance",
+        "depends_on": [
+          "R1",
+          "R2",
+          "R3",
+          "R4",
+          "R5",
+          "U1"
+        ],
+        "divider_model": {
+          "bias_current_a": {
+            "max": 0,
+            "min": 0
+          },
+          "ignored_nodes": {
+            "U1.1": "Synthetic FB input, all current in bias_current_a."
+          },
+          "reference_net": "GND",
+          "source_net": "VOUT_TEST"
+        },
+        "expected": {
+          "max": 1.56,
+          "min": 1.37
+        },
+        "id": "IR12",
+        "kind": "divider",
+        "net": "FB_TEST",
+        "node": "U1.1",
+        "rule": "Rule-08",
+        "vref": {
+          "max": 0.606,
+          "min": 0.594,
+          "typ": 0.6
+        }
+      },
+      "db": {
+        "nets": {
+          "A": [
+            "R1.2",
+            "R2.1",
+            "R5.1"
+          ],
+          "FB_TEST": [
+            "U1.1",
+            "R3.2",
+            "R4.1",
+            "R5.2"
+          ],
+          "GND": [
+            "R2.2",
+            "R4.2"
+          ],
+          "VOUT_TEST": [
+            "R1.1",
+            "R3.1"
+          ]
+        },
+        "parts": {
+          "R1": {
+            "nc": false,
+            "value": "10000R/1%"
+          },
+          "R2": {
+            "nc": false,
+            "value": "30000R/1%"
+          },
+          "R3": {
+            "nc": false,
+            "value": "20000R/1%"
+          },
+          "R4": {
+            "nc": false,
+            "value": "10000R/1%"
+          },
+          "R5": {
+            "nc": false,
+            "value": "10000R"
+          },
+          "U1": {
+            "nc": false,
+            "value": "SYNTHETIC-INDEPENDENT-FB"
+          }
+        },
+        "pin2net": {
+          "R1.1": "VOUT_TEST",
+          "R1.2": "A",
+          "R2.1": "A",
+          "R2.2": "GND",
+          "R3.1": "VOUT_TEST",
+          "R3.2": "FB_TEST",
+          "R4.1": "FB_TEST",
+          "R4.2": "GND",
+          "R5.1": "A",
+          "R5.2": "FB_TEST",
+          "U1.1": "FB_TEST"
+        },
+        "pinname": {
+          "U1.1": "FB"
+        },
+        "pintype": {},
+        "pseudo_nets": [],
+        "ref2page": {}
+      },
+      "description": "Missing loaded bridge resistor tolerance",
+      "expected": {
+        "review_result": "INSUFFICIENT"
+      },
+      "id": "IR12",
+      "oracle_basis": "Nonzero R5 current and absent tolerance leave mesh gain unbounded.",
+      "resistor_definition": [
+        {
+          "a": "VOUT_TEST",
+          "b": "A",
+          "ohm": "10000",
+          "populated": true,
+          "ref": "R1",
+          "tol": "0.01",
+          "value": "10000R/1%"
+        },
+        {
+          "a": "A",
+          "b": "GND",
+          "ohm": "30000",
+          "populated": true,
+          "ref": "R2",
+          "tol": "0.01",
+          "value": "30000R/1%"
+        },
+        {
+          "a": "VOUT_TEST",
+          "b": "FB_TEST",
+          "ohm": "20000",
+          "populated": true,
+          "ref": "R3",
+          "tol": "0.01",
+          "value": "20000R/1%"
+        },
+        {
+          "a": "FB_TEST",
+          "b": "GND",
+          "ohm": "10000",
+          "populated": true,
+          "ref": "R4",
+          "tol": "0.01",
+          "value": "10000R/1%"
+        },
+        {
+          "a": "A",
+          "b": "FB_TEST",
+          "ohm": "10000",
+          "populated": true,
+          "ref": "R5",
+          "tol": null,
+          "value": "10000R"
+        }
+      ]
+    },
+    {
+      "check": {
+        "citation": "Independent synthetic circuit: Third power rail",
+        "depends_on": [
+          "R1",
+          "R2",
+          "R3",
+          "U1"
+        ],
+        "divider_model": {
+          "bias_current_a": {
+            "max": 0,
+            "min": 0
+          },
+          "ignored_nodes": {
+            "U1.1": "Synthetic FB input, all current in bias_current_a."
+          },
+          "reference_net": "GND",
+          "source_net": "VOUT_TEST"
+        },
+        "expected": {
+          "max": 2.6,
+          "min": 2.2
+        },
+        "id": "IR13",
+        "kind": "divider",
+        "net": "FB_TEST",
+        "node": "U1.1",
+        "rule": "Rule-08",
+        "vref": {
+          "max": 0.606,
+          "min": 0.594,
+          "typ": 0.6
+        }
+      },
+      "db": {
+        "nets": {
+          "FB_TEST": [
+            "U1.1",
+            "R1.2",
+            "R2.1",
+            "R3.1"
+          ],
+          "GND": [
+            "R2.2"
+          ],
+          "VDD_AUX_5V": [
+            "R3.2"
+          ],
+          "VOUT_TEST": [
+            "R1.1"
+          ]
+        },
+        "parts": {
+          "R1": {
+            "nc": false,
+            "value": "27000R/2%"
+          },
+          "R2": {
+            "nc": false,
+            "value": "9000R/1%"
+          },
+          "R3": {
+            "nc": false,
+            "value": "100000R/1%"
+          },
+          "U1": {
+            "nc": false,
+            "value": "SYNTHETIC-INDEPENDENT-FB"
+          }
+        },
+        "pin2net": {
+          "R1.1": "VOUT_TEST",
+          "R1.2": "FB_TEST",
+          "R2.1": "FB_TEST",
+          "R2.2": "GND",
+          "R3.1": "FB_TEST",
+          "R3.2": "VDD_AUX_5V",
+          "U1.1": "FB_TEST"
+        },
+        "pinname": {
+          "U1.1": "FB"
+        },
+        "pintype": {},
+        "pseudo_nets": [],
+        "ref2page": {}
+      },
+      "description": "Third power rail",
+      "expected": {
+        "review_result": "INSUFFICIENT"
+      },
+      "id": "IR13",
+      "oracle_basis": "KCL requires third rail voltage/state not supplied in model.",
+      "resistor_definition": [
+        {
+          "a": "VOUT_TEST",
+          "b": "FB_TEST",
+          "ohm": "27000",
+          "populated": true,
+          "ref": "R1",
+          "tol": ".02",
+          "value": "27000R/2%"
+        },
+        {
+          "a": "FB_TEST",
+          "b": "GND",
+          "ohm": "9000",
+          "populated": true,
+          "ref": "R2",
+          "tol": "0.01",
+          "value": "9000R/1%"
+        },
+        {
+          "a": "FB_TEST",
+          "b": "VDD_AUX_5V",
+          "ohm": "100000",
+          "populated": true,
+          "ref": "R3",
+          "tol": "0.01",
+          "value": "100000R/1%"
+        }
+      ]
+    },
+    {
+      "check": {
+        "citation": "Independent synthetic circuit: Separate reference domain",
+        "depends_on": [
+          "R1",
+          "R2",
+          "R3",
+          "U1"
+        ],
+        "divider_model": {
+          "bias_current_a": {
+            "max": 0,
+            "min": 0
+          },
+          "ignored_nodes": {
+            "U1.1": "Synthetic FB input, all current in bias_current_a."
+          },
+          "reference_net": "GND",
+          "source_net": "VOUT_TEST"
+        },
+        "expected": {
+          "max": 2.6,
+          "min": 2.2
+        },
+        "id": "IR14",
+        "kind": "divider",
+        "net": "FB_TEST",
+        "node": "U1.1",
+        "rule": "Rule-08",
+        "vref": {
+          "max": 0.606,
+          "min": 0.594,
+          "typ": 0.6
+        }
+      },
+      "db": {
+        "nets": {
+          "AGND": [
+            "R3.2"
+          ],
+          "FB_TEST": [
+            "U1.1",
+            "R1.2",
+            "R2.1",
+            "R3.1"
+          ],
+          "GND": [
+            "R2.2"
+          ],
+          "VOUT_TEST": [
+            "R1.1"
+          ]
+        },
+        "parts": {
+          "R1": {
+            "nc": false,
+            "value": "27000R/2%"
+          },
+          "R2": {
+            "nc": false,
+            "value": "9000R/1%"
+          },
+          "R3": {
+            "nc": false,
+            "value": "100000R/1%"
+          },
+          "U1": {
+            "nc": false,
+            "value": "SYNTHETIC-INDEPENDENT-FB"
+          }
+        },
+        "pin2net": {
+          "R1.1": "VOUT_TEST",
+          "R1.2": "FB_TEST",
+          "R2.1": "FB_TEST",
+          "R2.2": "GND",
+          "R3.1": "FB_TEST",
+          "R3.2": "AGND",
+          "U1.1": "FB_TEST"
+        },
+        "pinname": {
+          "U1.1": "FB"
+        },
+        "pintype": {},
+        "pseudo_nets": [],
+        "ref2page": {}
+      },
+      "description": "Separate reference domain",
+      "expected": {
+        "review_result": "INSUFFICIENT"
+      },
+      "id": "IR14",
+      "oracle_basis": "AGND not proven equipotential with GND.",
+      "resistor_definition": [
+        {
+          "a": "VOUT_TEST",
+          "b": "FB_TEST",
+          "ohm": "27000",
+          "populated": true,
+          "ref": "R1",
+          "tol": ".02",
+          "value": "27000R/2%"
+        },
+        {
+          "a": "FB_TEST",
+          "b": "GND",
+          "ohm": "9000",
+          "populated": true,
+          "ref": "R2",
+          "tol": "0.01",
+          "value": "9000R/1%"
+        },
+        {
+          "a": "FB_TEST",
+          "b": "AGND",
+          "ohm": "100000",
+          "populated": true,
+          "ref": "R3",
+          "tol": "0.01",
+          "value": "100000R/1%"
+        }
+      ]
+    },
+    {
+      "check": {
+        "citation": "Independent synthetic circuit: MOSFET cannot be waived with ignore prose",
+        "depends_on": [
+          "Q1",
+          "R1",
+          "R2",
+          "R3",
+          "U1"
+        ],
+        "divider_model": {
+          "bias_current_a": {
+            "max": 0,
+            "min": 0
+          },
+          "ignored_nodes": {
+            "Q1.1": "Ignore with no transistor state model.",
+            "U1.1": "Synthetic FB input, all current in bias_current_a."
+          },
+          "reference_net": "GND",
+          "source_net": "VOUT_TEST"
+        },
+        "expected": {
+          "max": 2.6,
+          "min": 2.2
+        },
+        "id": "IR15",
+        "kind": "divider",
+        "net": "FB_TEST",
+        "node": "U1.1",
+        "rule": "Rule-08",
+        "vref": {
+          "max": 0.606,
+          "min": 0.594,
+          "typ": 0.6
+        }
+      },
+      "db": {
+        "nets": {
+          "CTRL": [
+            "Q1.3"
+          ],
+          "DRAIN": [
+            "R3.2",
+            "Q1.1"
+          ],
+          "FB_TEST": [
+            "U1.1",
+            "R1.2",
+            "R2.1",
+            "R3.1"
+          ],
+          "GND": [
+            "R2.2",
+            "Q1.2"
+          ],
+          "VOUT_TEST": [
+            "R1.1"
+          ]
+        },
+        "parts": {
+          "Q1": {
+            "nc": false,
+            "value": "SYNTHETIC-MOS"
+          },
+          "R1": {
+            "nc": false,
+            "value": "27000R/2%"
+          },
+          "R2": {
+            "nc": false,
+            "value": "9000R/1%"
+          },
+          "R3": {
+            "nc": false,
+            "value": "15000R/1%"
+          },
+          "U1": {
+            "nc": false,
+            "value": "SYNTHETIC-INDEPENDENT-FB"
+          }
+        },
+        "pin2net": {
+          "Q1.1": "DRAIN",
+          "Q1.2": "GND",
+          "Q1.3": "CTRL",
+          "R1.1": "VOUT_TEST",
+          "R1.2": "FB_TEST",
+          "R2.1": "FB_TEST",
+          "R2.2": "GND",
+          "R3.1": "FB_TEST",
+          "R3.2": "DRAIN",
+          "U1.1": "FB_TEST"
+        },
+        "pinname": {
+          "U1.1": "FB"
+        },
+        "pintype": {},
+        "pseudo_nets": [],
+        "ref2page": {}
+      },
+      "description": "MOSFET cannot be waived with ignore prose",
+      "expected": {
+        "review_result": "INSUFFICIENT"
+      },
+      "id": "IR15",
+      "oracle_basis": "Transistor state/I-V absent; prose is not a physical model.",
+      "resistor_definition": [
+        {
+          "a": "VOUT_TEST",
+          "b": "FB_TEST",
+          "ohm": "27000",
+          "populated": true,
+          "ref": "R1",
+          "tol": ".02",
+          "value": "27000R/2%"
+        },
+        {
+          "a": "FB_TEST",
+          "b": "GND",
+          "ohm": "9000",
+          "populated": true,
+          "ref": "R2",
+          "tol": "0.01",
+          "value": "9000R/1%"
+        },
+        {
+          "a": "FB_TEST",
+          "b": "DRAIN",
+          "ohm": "15000",
+          "populated": true,
+          "ref": "R3",
+          "tol": "0.01",
+          "value": "15000R/1%"
+        }
+      ]
+    },
+    {
+      "check": {
+        "citation": "Independent synthetic circuit: Nonlinear diode clamp",
+        "depends_on": [
+          "D1",
+          "R1",
+          "R2",
+          "U1"
+        ],
+        "divider_model": {
+          "bias_current_a": {
+            "max": 0,
+            "min": 0
+          },
+          "ignored_nodes": {
+            "D1.1": "Assume no current without I-V guarantee.",
+            "U1.1": "Synthetic FB input, all current in bias_current_a."
+          },
+          "reference_net": "GND",
+          "source_net": "VOUT_TEST"
+        },
+        "expected": {
+          "max": 2.6,
+          "min": 2.2
+        },
+        "id": "IR16",
+        "kind": "divider",
+        "net": "FB_TEST",
+        "node": "U1.1",
+        "rule": "Rule-08",
+        "vref": {
+          "max": 0.606,
+          "min": 0.594,
+          "typ": 0.6
+        }
+      },
+      "db": {
+        "nets": {
+          "FB_TEST": [
+            "U1.1",
+            "R1.2",
+            "R2.1",
+            "D1.1"
+          ],
+          "GND": [
+            "R2.2",
+            "D1.2"
+          ],
+          "VOUT_TEST": [
+            "R1.1"
+          ]
+        },
+        "parts": {
+          "D1": {
+            "nc": false,
+            "value": "SYNTHETIC-LED"
+          },
+          "R1": {
+            "nc": false,
+            "value": "27000R/2%"
+          },
+          "R2": {
+            "nc": false,
+            "value": "9000R/1%"
+          },
+          "U1": {
+            "nc": false,
+            "value": "SYNTHETIC-INDEPENDENT-FB"
+          }
+        },
+        "pin2net": {
+          "D1.1": "FB_TEST",
+          "D1.2": "GND",
+          "R1.1": "VOUT_TEST",
+          "R1.2": "FB_TEST",
+          "R2.1": "FB_TEST",
+          "R2.2": "GND",
+          "U1.1": "FB_TEST"
+        },
+        "pinname": {
+          "U1.1": "FB"
+        },
+        "pintype": {},
+        "pseudo_nets": [],
+        "ref2page": {}
+      },
+      "description": "Nonlinear diode clamp",
+      "expected": {
+        "review_result": "INSUFFICIENT"
+      },
+      "id": "IR16",
+      "oracle_basis": "Diode I-V/state absent; unknown current changes required output.",
+      "resistor_definition": [
+        {
+          "a": "VOUT_TEST",
+          "b": "FB_TEST",
+          "ohm": "27000",
+          "populated": true,
+          "ref": "R1",
+          "tol": ".02",
+          "value": "27000R/2%"
+        },
+        {
+          "a": "FB_TEST",
+          "b": "GND",
+          "ohm": "9000",
+          "populated": true,
+          "ref": "R2",
+          "tol": "0.01",
+          "value": "9000R/1%"
+        }
+      ]
+    },
+    {
+      "check": {
+        "citation": "Independent synthetic circuit: Unknown critical resistance",
+        "depends_on": [
+          "R1",
+          "R2",
+          "U1"
+        ],
+        "divider_model": {
+          "bias_current_a": {
+            "max": 0,
+            "min": 0
+          },
+          "ignored_nodes": {
+            "U1.1": "Synthetic FB input, all current in bias_current_a."
+          },
+          "reference_net": "GND",
+          "source_net": "VOUT_TEST"
+        },
+        "expected": {
+          "max": 2.6,
+          "min": 2.2
+        },
+        "id": "IR17",
+        "kind": "divider",
+        "net": "FB_TEST",
+        "node": "U1.1",
+        "rule": "Rule-08",
+        "vref": {
+          "max": 0.606,
+          "min": 0.594,
+          "typ": 0.6
+        }
+      },
+      "db": {
+        "nets": {
+          "FB_TEST": [
+            "U1.1",
+            "R1.2",
+            "R2.1"
+          ],
+          "GND": [
+            "R2.2"
+          ],
+          "VOUT_TEST": [
+            "R1.1"
+          ]
+        },
+        "parts": {
+          "R1": {
+            "nc": false,
+            "value": "UNKNOWN"
+          },
+          "R2": {
+            "nc": false,
+            "value": "9000R/1%"
+          },
+          "U1": {
+            "nc": false,
+            "value": "SYNTHETIC-INDEPENDENT-FB"
+          }
+        },
+        "pin2net": {
+          "R1.1": "VOUT_TEST",
+          "R1.2": "FB_TEST",
+          "R2.1": "FB_TEST",
+          "R2.2": "GND",
+          "U1.1": "FB_TEST"
+        },
+        "pinname": {
+          "U1.1": "FB"
+        },
+        "pintype": {},
+        "pseudo_nets": [],
+        "ref2page": {}
+      },
+      "description": "Unknown critical resistance",
+      "expected": {
+        "review_result": "INSUFFICIENT"
+      },
+      "id": "IR17",
+      "oracle_basis": "Gain cannot be established without upper resistance.",
+      "resistor_definition": [
+        {
+          "a": "VOUT_TEST",
+          "b": "FB_TEST",
+          "ohm": "27000",
+          "populated": true,
+          "ref": "R1",
+          "tol": ".02",
+          "value": "UNKNOWN"
+        },
+        {
+          "a": "FB_TEST",
+          "b": "GND",
+          "ohm": "9000",
+          "populated": true,
+          "ref": "R2",
+          "tol": "0.01",
+          "value": "9000R/1%"
+        }
+      ]
+    },
+    {
+      "check": {
+        "citation": "Independent synthetic circuit: Vref has nominal only",
+        "depends_on": [
+          "R1",
+          "R2",
+          "U1"
+        ],
+        "divider_model": {
+          "bias_current_a": {
+            "max": 0,
+            "min": 0
+          },
+          "ignored_nodes": {
+            "U1.1": "Synthetic FB input, all current in bias_current_a."
+          },
+          "reference_net": "GND",
+          "source_net": "VOUT_TEST"
+        },
+        "expected": {
+          "max": 2.6,
+          "min": 2.2
+        },
+        "id": "IR18",
+        "kind": "divider",
+        "net": "FB_TEST",
+        "node": "U1.1",
+        "rule": "Rule-08",
+        "vref": 0.6
+      },
+      "db": {
+        "nets": {
+          "FB_TEST": [
+            "U1.1",
+            "R1.2",
+            "R2.1"
+          ],
+          "GND": [
+            "R2.2"
+          ],
+          "VOUT_TEST": [
+            "R1.1"
+          ]
+        },
+        "parts": {
+          "R1": {
+            "nc": false,
+            "value": "27000R/2%"
+          },
+          "R2": {
+            "nc": false,
+            "value": "9000R/1%"
+          },
+          "U1": {
+            "nc": false,
+            "value": "SYNTHETIC-INDEPENDENT-FB"
+          }
+        },
+        "pin2net": {
+          "R1.1": "VOUT_TEST",
+          "R1.2": "FB_TEST",
+          "R2.1": "FB_TEST",
+          "R2.2": "GND",
+          "U1.1": "FB_TEST"
+        },
+        "pinname": {
+          "U1.1": "FB"
+        },
+        "pintype": {},
+        "pseudo_nets": [],
+        "ref2page": {}
+      },
+      "description": "Vref has nominal only",
+      "expected": {
+        "review_result": "INSUFFICIENT"
+      },
+      "id": "IR18",
+      "oracle_basis": "Nominal Vref does not bound manufacturing and operating variation.",
+      "resistor_definition": [
+        {
+          "a": "VOUT_TEST",
+          "b": "FB_TEST",
+          "ohm": "27000",
+          "populated": true,
+          "ref": "R1",
+          "tol": ".02",
+          "value": "27000R/2%"
+        },
+        {
+          "a": "FB_TEST",
+          "b": "GND",
+          "ohm": "9000",
+          "populated": true,
+          "ref": "R2",
+          "tol": "0.01",
+          "value": "9000R/1%"
+        }
+      ]
+    },
+    {
+      "check": {
+        "citation": "Independent synthetic circuit: Feedback shorted to ground by zero ohms",
+        "depends_on": [
+          "R1",
+          "R2",
+          "R3",
+          "U1"
+        ],
+        "divider_model": {
+          "bias_current_a": {
+            "max": 0,
+            "min": 0
+          },
+          "ignored_nodes": {
+            "U1.1": "Synthetic FB input, all current in bias_current_a."
+          },
+          "reference_net": "GND",
+          "source_net": "VOUT_TEST"
+        },
+        "expected": {
+          "max": 2.6,
+          "min": 2.2
+        },
+        "id": "IR19",
+        "kind": "divider",
+        "net": "FB_TEST",
+        "node": "U1.1",
+        "rule": "Rule-08",
+        "vref": {
+          "max": 0.606,
+          "min": 0.594,
+          "typ": 0.6
+        }
+      },
+      "db": {
+        "nets": {
+          "FB_TEST": [
+            "U1.1",
+            "R1.2",
+            "R2.1",
+            "R3.1"
+          ],
+          "GND": [
+            "R2.2",
+            "R3.2"
+          ],
+          "VOUT_TEST": [
+            "R1.1"
+          ]
+        },
+        "parts": {
+          "R1": {
+            "nc": false,
+            "value": "27000R/2%"
+          },
+          "R2": {
+            "nc": false,
+            "value": "9000R/1%"
+          },
+          "R3": {
+            "nc": false,
+            "value": "0R/0%"
+          },
+          "U1": {
+            "nc": false,
+            "value": "SYNTHETIC-INDEPENDENT-FB"
+          }
+        },
+        "pin2net": {
+          "R1.1": "VOUT_TEST",
+          "R1.2": "FB_TEST",
+          "R2.1": "FB_TEST",
+          "R2.2": "GND",
+          "R3.1": "FB_TEST",
+          "R3.2": "GND",
+          "U1.1": "FB_TEST"
+        },
+        "pinname": {
+          "U1.1": "FB"
+        },
+        "pintype": {},
+        "pseudo_nets": [],
+        "ref2page": {}
+      },
+      "description": "Feedback shorted to ground by zero ohms",
+      "expected": {
+        "review_result": "INSUFFICIENT"
+      },
+      "id": "IR19",
+      "oracle_basis": "F=0 contradicts F>=.594; no finite divider solution.",
+      "resistor_definition": [
+        {
+          "a": "VOUT_TEST",
+          "b": "FB_TEST",
+          "ohm": "27000",
+          "populated": true,
+          "ref": "R1",
+          "tol": ".02",
+          "value": "27000R/2%"
+        },
+        {
+          "a": "FB_TEST",
+          "b": "GND",
+          "ohm": "9000",
+          "populated": true,
+          "ref": "R2",
+          "tol": "0.01",
+          "value": "9000R/1%"
+        },
+        {
+          "a": "FB_TEST",
+          "b": "GND",
+          "ohm": "0",
+          "populated": true,
+          "ref": "R3",
+          "tol": "0",
+          "value": "0R/0%"
+        }
+      ]
+    },
+    {
+      "check": {
+        "citation": "Independent synthetic circuit: Open ended passive stub has zero DC current",
+        "depends_on": [
+          "R1",
+          "R2",
+          "R3",
+          "U1"
+        ],
+        "divider_model": {
+          "bias_current_a": {
+            "max": 0,
+            "min": 0
+          },
+          "ignored_nodes": {
+            "U1.1": "Synthetic FB input, all current in bias_current_a."
+          },
+          "reference_net": "GND",
+          "source_net": "VOUT_TEST"
+        },
+        "expected": {
+          "max": 2.6,
+          "min": 2.2
+        },
+        "id": "IR20",
+        "kind": "divider",
+        "net": "FB_TEST",
+        "node": "U1.1",
+        "rule": "Rule-08",
+        "vref": {
+          "max": 0.606,
+          "min": 0.594,
+          "typ": 0.6
+        }
+      },
+      "db": {
+        "nets": {
+          "FB_TEST": [
+            "U1.1",
+            "R1.2",
+            "R2.1",
+            "R3.1"
+          ],
+          "GND": [
+            "R2.2"
+          ],
+          "STUB": [
+            "R3.2"
+          ],
+          "VOUT_TEST": [
+            "R1.1"
+          ]
+        },
+        "parts": {
+          "R1": {
+            "nc": false,
+            "value": "27000R/2%"
+          },
+          "R2": {
+            "nc": false,
+            "value": "9000R/1%"
+          },
+          "R3": {
+            "nc": false,
+            "value": "33000R/1%"
+          },
+          "U1": {
+            "nc": false,
+            "value": "SYNTHETIC-INDEPENDENT-FB"
+          }
+        },
+        "pin2net": {
+          "R1.1": "VOUT_TEST",
+          "R1.2": "FB_TEST",
+          "R2.1": "FB_TEST",
+          "R2.2": "GND",
+          "R3.1": "FB_TEST",
+          "R3.2": "STUB",
+          "U1.1": "FB_TEST"
+        },
+        "pinname": {
+          "U1.1": "FB"
+        },
+        "pintype": {},
+        "pseudo_nets": [],
+        "ref2page": {}
+      },
+      "description": "Open ended passive stub has zero DC current",
+      "expected": {
+        "calculation": {
+          "max": 2.479090909090909,
+          "min": 2.323069306930693,
+          "typ": 2.4
+        },
+        "review_result": "PASS"
+      },
+      "id": "IR20",
+      "oracle_basis": "KCL(STUB): Vstub=F. KCL: O=F*(1+Ru/Rl)+Ib*Ru. Exact rational independent endpoint enumeration; typ has zero bias.",
+      "resistor_definition": [
+        {
+          "a": "VOUT_TEST",
+          "b": "FB_TEST",
+          "ohm": "27000",
+          "populated": true,
+          "ref": "R1",
+          "tol": ".02",
+          "value": "27000R/2%"
+        },
+        {
+          "a": "FB_TEST",
+          "b": "GND",
+          "ohm": "9000",
+          "populated": true,
+          "ref": "R2",
+          "tol": "0.01",
+          "value": "9000R/1%"
+        },
+        {
+          "a": "FB_TEST",
+          "b": "STUB",
+          "ohm": "33000",
+          "populated": true,
+          "ref": "R3",
+          "tol": "0.01",
+          "value": "33000R/1%"
+        }
+      ]
+    },
+    {
+      "check": {
+        "citation": "Independent synthetic circuit: Missing bias-current bounds",
+        "depends_on": [
+          "R1",
+          "R2",
+          "U1"
+        ],
+        "divider_model": {
+          "ignored_nodes": {
+            "U1.1": "Synthetic FB input, all current in bias_current_a."
+          },
+          "reference_net": "GND",
+          "source_net": "VOUT_TEST"
+        },
+        "expected": {
+          "max": 2.6,
+          "min": 2.2
+        },
+        "id": "IR21",
+        "kind": "divider",
+        "net": "FB_TEST",
+        "node": "U1.1",
+        "rule": "Rule-08",
+        "vref": {
+          "max": 0.606,
+          "min": 0.594,
+          "typ": 0.6
+        }
+      },
+      "db": {
+        "nets": {
+          "FB_TEST": [
+            "U1.1",
+            "R1.2",
+            "R2.1"
+          ],
+          "GND": [
+            "R2.2"
+          ],
+          "VOUT_TEST": [
+            "R1.1"
+          ]
+        },
+        "parts": {
+          "R1": {
+            "nc": false,
+            "value": "27000R/2%"
+          },
+          "R2": {
+            "nc": false,
+            "value": "9000R/1%"
+          },
+          "U1": {
+            "nc": false,
+            "value": "SYNTHETIC-INDEPENDENT-FB"
+          }
+        },
+        "pin2net": {
+          "R1.1": "VOUT_TEST",
+          "R1.2": "FB_TEST",
+          "R2.1": "FB_TEST",
+          "R2.2": "GND",
+          "U1.1": "FB_TEST"
+        },
+        "pinname": {
+          "U1.1": "FB"
+        },
+        "pintype": {},
+        "pseudo_nets": [],
+        "ref2page": {}
+      },
+      "description": "Missing bias-current bounds",
+      "expected": {
+        "review_result": "INSUFFICIENT"
+      },
+      "id": "IR21",
+      "oracle_basis": "Unknown FB input current leaves output unbounded.",
+      "resistor_definition": [
+        {
+          "a": "VOUT_TEST",
+          "b": "FB_TEST",
+          "ohm": "27000",
+          "populated": true,
+          "ref": "R1",
+          "tol": ".02",
+          "value": "27000R/2%"
+        },
+        {
+          "a": "FB_TEST",
+          "b": "GND",
+          "ohm": "9000",
+          "populated": true,
+          "ref": "R2",
+          "tol": "0.01",
+          "value": "9000R/1%"
+        }
+      ]
+    },
+    {
+      "check": {
+        "citation": "Independent synthetic circuit: FB pin not explicitly bound to load model",
+        "depends_on": [
+          "R1",
+          "R2",
+          "U1"
+        ],
+        "divider_model": {
+          "bias_current_a": {
+            "max": 0,
+            "min": 0
+          },
+          "ignored_nodes": {},
+          "reference_net": "GND",
+          "source_net": "VOUT_TEST"
+        },
+        "expected": {
+          "max": 2.6,
+          "min": 2.2
+        },
+        "id": "IR22",
+        "kind": "divider",
+        "net": "FB_TEST",
+        "node": "U1.1",
+        "rule": "Rule-08",
+        "vref": {
+          "max": 0.606,
+          "min": 0.594,
+          "typ": 0.6
+        }
+      },
+      "db": {
+        "nets": {
+          "FB_TEST": [
+            "U1.1",
+            "R1.2",
+            "R2.1"
+          ],
+          "GND": [
+            "R2.2"
+          ],
+          "VOUT_TEST": [
+            "R1.1"
+          ]
+        },
+        "parts": {
+          "R1": {
+            "nc": false,
+            "value": "27000R/2%"
+          },
+          "R2": {
+            "nc": false,
+            "value": "9000R/1%"
+          },
+          "U1": {
+            "nc": false,
+            "value": "SYNTHETIC-INDEPENDENT-FB"
+          }
+        },
+        "pin2net": {
+          "R1.1": "VOUT_TEST",
+          "R1.2": "FB_TEST",
+          "R2.1": "FB_TEST",
+          "R2.2": "GND",
+          "U1.1": "FB_TEST"
+        },
+        "pinname": {
+          "U1.1": "FB"
+        },
+        "pintype": {},
+        "pseudo_nets": [],
+        "ref2page": {}
+      },
+      "description": "FB pin not explicitly bound to load model",
+      "expected": {
+        "review_result": "INSUFFICIENT"
+      },
+      "id": "IR22",
+      "oracle_basis": "IC pin must be tied to the stated input-current model.",
+      "resistor_definition": [
+        {
+          "a": "VOUT_TEST",
+          "b": "FB_TEST",
+          "ohm": "27000",
+          "populated": true,
+          "ref": "R1",
+          "tol": ".02",
+          "value": "27000R/2%"
+        },
+        {
+          "a": "FB_TEST",
+          "b": "GND",
+          "ohm": "9000",
+          "populated": true,
+          "ref": "R2",
+          "tol": "0.01",
+          "value": "9000R/1%"
+        }
+      ]
+    }
+  ],
+  "implementation_reads_before_freeze": [
+    "before/scripts/solve_dividers.py",
+    "before/scripts/lint.py",
+    "before/scripts/electrical_contract.py",
+    "before/scripts/tests/electrical_fixtures.py",
+    "before/scripts/tests/test_electrical_safety.py",
+    "before/scripts/tests/test_solve_dividers.py"
+  ],
+  "oracle": "Independent scalar KCL elimination and exact rational endpoints",
+  "prohibited_sources_read": [],
+  "runner_sha256": "ef8d4f088212431070679e291841ff3d433bb574122f8c95c148af75dfd6990e",
+  "schema_version": 1
+}

@@ -27,7 +27,7 @@ V2.2 将逐脚/网表审查、原厂证据、工况与参数计算，整理成�
 
 完整网表模式使用原理图PDF、有效网表、BOM/装配配置、需求/接口定义与核心器件资料。
 缺项继续完成可做检查；仅PDF时受限读图，不声称完成机器网表全覆盖。
-随附解析器支持Cadence/OrCAD PST三件套，其它EDA需要验证适配器。
+随附解析器支持Cadence/OrCAD PST三件套及KiCad kicadxml；直接读.kicad_sch需要现有kicad-cli导出。其它EDA需要验证适配器。
 
 ## 审查与生成
 
@@ -35,23 +35,36 @@ Python脚本仅依赖标准库。PDF读取/渲染使用环境现有工具，不�
 项目输入、工作台账和证据存放在独立审查目录；下列scripts路径按安装位置调整：
 
     python3 scripts/parse_netlist.py <项目>/allegro -o db.json
-    python3 scripts/plan_review.py db.json --intent intent.json --json review-plan.json
-    python3 scripts/lint.py db.json --log <项目>/allegro/netlist.log --intent intent.json --json lint-cold.json
+    # KiCad输入也可用：python3 scripts/parse_kicad.py <文件.kicad_sch或kicadxml> -o db.json
+    python3 scripts/lint.py db.json --log <项目>/allegro/netlist.log --intent intent.json --plan-json review-plan-cold.json --json lint-cold.json
     python3 scripts/audit_datasheets.py db.json --datasheet-dir <器件资料目录> --json datasheet-audit.json
 
 按[资料补取契约](references/datasheet-resolution-schema.md)核对型号/版本并补齐记录后：
 
     python3 scripts/audit_datasheets.py db.json --datasheet-dir <器件资料目录> --resolution datasheet-resolution.json --evidence evidence.json --json datasheet-audit.json
-    python3 scripts/lint.py db.json --intent intent.json --evidence evidence.json --datasheet-audit datasheet-audit.json --plan-json review-plan-hot.json --json lint-hot.json
+    python3 scripts/lint.py db.json --intent intent.json --evidence evidence.json --datasheet-audit datasheet-audit.json --merge-plan review-plan-cold.json --plan-json review-plan.json --json lint-hot.json
 
-Agent完成工程审查并填写schema_version=3的review-results.json，再校验、生成：
+人工补查加入冷/最终计划；同版冷/热合并保留这些检查与各状态子项。Agent完成工程审查并填写schema_version=3、binding_version=1、remediation_version=1的review-results.json，再校验、生成：
 
-    python3 scripts/validate_review.py review-plan.json review-results.json --db db.json --lint lint-cold.json --lint lint-hot.json --require-actionable --json review-gate.json
-    python3 scripts/render_report.py review-plan.json review-results.json --db db.json --lint lint-cold.json --lint lint-hot.json --output report.md --csv issues.csv
+    python3 scripts/validate_review.py review-plan.json review-results.json --db db.json --lint lint-cold.json --lint lint-hot.json --require-actionable --require-bindings --json review-gate.json
+    python3 scripts/render_report.py review-plan.json review-results.json --db db.json --lint lint-cold.json --lint lint-hot.json --require-bindings --output report.md --csv issues.csv
     python3 scripts/diff_netlists.py old-db.json db.json --claims review-claims.json --json diff.json --fail-on-open-claims
 
 生成器先验证台账，按统一ID生成全部详情和三等级CSV；不自动判电气正确，也不自动从Lint生成PASS。
 PDF按[报告模板](references/report-template.md)分页、渲染并目检所有页面后交付。
+
+## 2026-09-17 能力更新
+
+在 V2.2 三等级、schema 3、报告生成器与新手修改说明框架内，吸收 foxsheep1214 的 a5371bf：
+
+- **9类检查器与逐状态清单**：I²C拓扑、去耦、感性负载、功率开关、输入滤波、上电使能、监控看门狗、差分电平、光耦。7类新增电路检查器提供15条冷跑规则和6条保证值热算规则；名称线索只产生候选。
+- **冷/热计划合并与对象绑定**：防漏人工项、错用其他引脚/状态的结论、把总FAIL下传给未违反的窄判据。
+- **改版影响与强制复验**：输入/资料字节哈希、显式依赖及历史项处置；依赖不足时扩大到全量。复审的lint、validate_review和render_report均传相同--old-db/--old-plan，后两者加--require-revision-impact。
+- **参数与数值能力**：带条件/指纹的Vref事实复用、受限线性反馈网络角点计算；未知输入不默认补值。
+- **KiCad输入与回归语料**：分开NC、真悬空和DNP；166个冻结用例供维护回归，不代表真实整板检出率。
+
+详见[检查器](references/checkers.md)、[事实复用](references/datasheet-facts-schema.md)、
+[改版复验](references/revision-impact-schema.md)、[移植来源与边界](references/upstream-integration.md)。
 
 ## 数据与兼容
 
@@ -70,14 +83,18 @@ validate_review退出0表示台账有效，电路仍可能不满足冻结条件�
 
 ## 可运行的合成示例
 
-    python3 scripts/validate_review.py examples/three-level/plan.json examples/three-level/review-results.json --db examples/three-level/db.json --require-actionable
-    python3 scripts/render_report.py examples/three-level/plan.json examples/three-level/review-results.json --db examples/three-level/db.json --output /tmp/review-example.md --csv /tmp/review-example.csv
+    python3 scripts/validate_review.py examples/three-level/plan.json examples/three-level/review-results.json --db examples/three-level/db.json --require-actionable --require-bindings
+    python3 scripts/render_report.py examples/three-level/plan.json examples/three-level/review-results.json --db examples/three-level/db.json --require-bindings --output /tmp/review-example.md --csv /tmp/review-example.csv
     python3 -m unittest discover -s scripts/tests -v
 
 示例应得error 1项、warning 2项、suggestion 3项，台账有效但存在未修复error。
 [示例正文](examples/worked-example-industrial-gateway.md)只展示合成数据，不是器件设计依据。
 
-## 文件导航
+输入基线和最终证据持久保存在项目审查目录，见 [覆盖与留档](references/coverage-protocol.md)。
+报告结构见 [报告模板](references/report-template.md)，修改说明见
+[remediation-guide](references/remediation-guide.md)，格式示范见
+[合成示例](examples/worked-example-industrial-gateway.md)。公开仓库只保存脱敏合成用例，
+真实原图、BOM、私有手册与过程产物留在项目目录。
 
 | 文件 | 用途 |
 |---|---|

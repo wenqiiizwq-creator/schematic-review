@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "record_type": "real_project_intake",
+  "state": "PENDING_EVIDENCE_NOT_SCORED",
+  "project_alias": null,
+  "confidentiality": "private-until-explicitly-authorized",
+  "permitted_use": {
+    "local_evaluation": false,
+    "publication": false
+  },
+  "baseline": {
+    "revision": null,
+    "assembly_variant": null,
+    "files": [
+      {
+        "role": "schematic/netlist/export_log/bom/requirements/datasheet",
+        "path": null,
+        "sha256": null
+      }
+    ]
+  },
+  "operating_conditions": {
+    "input_voltage_v": null,
+    "load_range": null,
+    "temperature_c": null,
+    "power_states": [],
+    "timing_requirements": null
+  },
+  "checks": [
+    {
+      "id": null,
+      "object": {
+        "refdes": [],
+        "pins": [],
+        "nets": []
+      },
+      "criterion": null,
+      "source_locators": [],
+      "expected_result": null,
+      "truth_state": "UNCONFIRMED",
+      "confirmation_method": null,
+      "confirmation_evidence": [],
+      "reviewer": null,
+      "confirmed_date": null,
+      "severity": null,
+      "reverification": null
+    }
+  ],
+  "partition": {
+    "family_id": null,
+    "split": null,
+    "exposed_to_optimizer": false
+  },
+  "notes": "Not directly executable by the synthetic-only worker. Build and validate a separate real-project adapter; never label a missing specification PASS."
+}

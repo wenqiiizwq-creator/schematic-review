@@ -27,10 +27,13 @@ import sys
 from collections import defaultdict
 
 from audit_datasheets import validate_datasheet_audit
-from electrical_contract import db_fingerprint, readiness_gaps, validate_evidence
+from checkers import PowerTree, REGISTRY, REGISTRY_BY_ID, registry_hot_rules
+from checkers.netgraph import NetGraph
+from electrical_contract import db_fingerprint, load_json, readiness_gaps, validate_evidence
+from fractions import Fraction
 from itertools import product
 from plan_review import build_review_plan, validate_intent
-from solve_dividers import Solver, divider_window, parse_resistor
+from solve_dividers import Solver, divider_window, linear_feedback_window, parse_resistor
 
 GNDS = {'GND', 'PGND', 'AGND', 'DGND', 'EGND'}
 RAIL_RE = re.compile(r'^(VCC|VDD|VDDA|VCCA|VOUT|VBAT|AVDD|DVDD|VIN|VBUS|V\d)', re.I)
@@ -43,6 +46,12 @@ HOT_RULES = [('Rule-08', '参数验算不符'), ('Rule-09', '必需上拉/串阻
              ('Rule-12', 'EN 极性/耐压定判'), ('Rule-14', '新增符号引脚映射'),
              ('Rule-16', 'strap 违反强制条款')]
 HOT_RULE_IDS = {x[0] for x in HOT_RULES}
+
+
+def hot_rules():
+    """内建热跑规则加注册表热跑规则；未执行的照样要列出来。"""
+    return HOT_RULES + [(rule, name) for rule, (name, _)
+                        in sorted(registry_hot_rules().items())]
 
 
 def _pin_class(value):
@@ -110,6 +119,9 @@ class Lint:
         self.skipped = []      # 未执行的规则及原因——绝不静默跳过
         self.hot_executed = set()
         self._ends_cache = {}
+        self.graph = NetGraph(db)
+        self.powertree = PowerTree(self.graph, self.intent)
+        self.inventories = {checker.id: checker.build(db, self.intent) for checker in REGISTRY}
 
     # -- helpers ---------------------------------------------------------
     def ends(self, ref):
@@ -167,6 +179,8 @@ class Lint:
             evidence = next((x for x in self.evidence.get('checks', [])
                              if x.get('id') == extra['check_id']), {})
             item['state'] = (evidence.get('basis') or {}).get('state')
+            if 'vref_binding' in evidence:
+                item['vref_binding'] = evidence['vref_binding']
             item['review_result'] = 'INSUFFICIENT' if kind == 'CANDIDATE' else 'FAIL'
             self.results.append(item)
         self.F.append(item)
@@ -179,51 +193,14 @@ class Lint:
         }
         if calculation is not None:
             item['calculation'] = calculation
+        if 'vref_binding' in check:
+            item['vref_binding'] = check['vref_binding']
         self.passes.append(item)
         self.results.append(item)
 
     def power_path(self, net):
         """Return a source-to-load candidate path, never a rail signoff."""
-        state = self.intent.get('active_state')
-        sources = {x.get('node'): x for x in self.intent.get('power_sources', [])
-                   if x.get('citation') and state in x.get('states', [])}
-        directed = [x for x in self.intent.get('power_paths', [])
-                    if x.get('citation') and x.get('state') == state]
-        queue, seen = [(net, [])], set()
-        while queue:
-            current, path = queue.pop(0)
-            if current in seen or current in GNDS or current in self.pseudo:
-                continue
-            seen.add(current)
-            for node in self.nets.get(current, []):
-                ref = node.split('.')[0]
-                part = self.parts.get(ref, {})
-                if not part or part.get('nc'):
-                    continue
-                pin = str(self.pinname.get(node, ''))
-                if node in sources:
-                    return {'source': node, 'path': list(reversed(path)),
-                            'basis': 'declared source', 'state': state}
-                if re.match(r'^[UM]\d', ref, re.I) and re.match(
-                        r'^(VOUT|VREG|VDD_EXT|VO)(?:$|[_+\d])', pin, re.I):
-                    return {'source': node, 'path': list(reversed(path)),
-                            'basis': 'pin-name candidate; verify function and upstream power'}
-                ends = self.ends(ref)
-                if len(ends) != 2 or current not in ends:
-                    continue
-                other = ends[0] if ends[1] == current else ends[1]
-                resistor = parse_resistor(part.get('value')) if re.match(r'^R\d', ref) else None
-                if re.match(r'^(L|FB|F)\d', ref) or (resistor and resistor['kohm'] == 0):
-                    queue.append((other, path + [ref]))
-            # Multi-pin MOS models are validated by exact endpoint membership.
-            for edge in directed:
-                ref = edge.get('ref')
-                part = self.parts.get(ref, {})
-                ends = self.ends(ref) if ref else []
-                if (part and not part.get('nc') and edge.get('to') == current
-                        and edge.get('from') in ends and current in ends):
-                    queue.append((edge['from'], path + [ref]))
-        return None
+        return self.powertree.source_of(net)
 
     def driven(self, net):
         return self.power_path(net) is not None
@@ -439,6 +416,11 @@ class Lint:
                 tag = '' if actual == net else f'（网表实为 {actual}）'
                 self.add('LOG-36038', 'No_connect 属性被忽略并强行连线',
                          f'{pin} -> {net}{tag}', pin.split('.')[0])
+        for checker in REGISTRY:
+            inventory = self.inventories.get(checker.id)
+            if inventory is not None:
+                checker.cold_findings(self, inventory)
+
         if self.evidence:
             self.run_hot()
         return self.F
@@ -454,13 +436,17 @@ class Lint:
                          citation=check['citation'], required_inputs=gaps)
                 continue
             self.hot_executed.add(rule)
-            {
+            builtin = {
                 'Rule-08': self._hot_divider,
                 'Rule-09': self._hot_required_passive,
                 'Rule-12': self._hot_pin_bias,
                 'Rule-14': self._hot_pin_map,
                 'Rule-16': self._hot_strap,
-            }[rule](check)
+            }
+            if rule in builtin:
+                builtin[rule](check)
+            else:
+                registry_hot_rules()[rule][1].hot_check(self, check)
 
     @staticmethod
     def _citation(check):
@@ -469,30 +455,39 @@ class Lint:
     def _hot_divider(self, check):
         tolerance = check.get('resistor_tolerance')
         model = check.get('divider_model') or {}
-        solution = Solver(self.db, default_tol=tolerance, model=model).solve_net(check['net'])
-        if solution.get('status') != 'ok' or not solution.get('tolerances_complete'):
+        try:
+            if len({check['net'], model.get('source_net'), model.get('reference_net')}) != 3:
+                raise ValueError('FB、源端和参考地必须不同')
+            solver = Solver(self.db, default_tol=tolerance, model=model)
+            solution = solver.solve_net(check['net'])
+            vref = check['vref']
+            typ, minimum, maximum = (float(vref[k]) for k in ('typ', 'min', 'max'))
+            bias = model['bias_current_a']
+            if solution.get('status') == 'ok':
+                window = divider_window(solution, typ, minimum, maximum)
+                corners = [v * (1 + up / lo) + current * up * 1000
+                           for v, up, lo, current in product(
+                               (minimum, maximum), (solution['up']['min'], solution['up']['max']),
+                               (solution['lo']['min'], solution['lo']['max']),
+                               (bias['min'], bias['max']))]
+                window.update(min=min(corners), max=max(corners))
+                window['typ_note'] = 'typ 为零偏置标称值；min/max 包含偏置电流'
+            else:
+                network = solver.linear_network(check['net'])
+                # Newly supported networks require bindings for every resistor
+                # and ignored load, not only devices directly on the FB net.
+                expanded = dict(check, depends_on=sorted(
+                    set(check.get('depends_on') or []) | set(network['required_refs'])))
+                gaps = readiness_gaps(self.db, expanded, self.datasheet_audit, self.db_sha256)
+                if gaps:
+                    raise ValueError('节点网络参数来源未就绪：' + '; '.join(gaps))
+                window = linear_feedback_window(network, vref, bias)
+        except ValueError as error:
             self.add(
                 'Rule-08', '分压网络无法无歧义求解',
-                f"{check['net']}: {solution.get('reason') or '电阻公差缺失'}；{self._citation(check)}",
-                kind='CANDIDATE', check_id=check['id'],
-                citation=check['citation'])
+                f"{check['net']}: {error}；{self._citation(check)}",
+                kind='CANDIDATE', check_id=check['id'], citation=check['citation'])
             return
-        vref = check['vref']
-        if isinstance(vref, dict):
-            typ = float(vref['typ'])
-            minimum = float(vref.get('min', typ))
-            maximum = float(vref.get('max', typ))
-        else:
-            typ = minimum = maximum = float(vref)
-        window = divider_window(solution, typ, minimum, maximum)
-        bias = model['bias_current_a']
-        corners = [v * (1 + up / lo) + current * up * 1000
-                   for v, up, lo, current in product(
-                       (minimum, maximum), (solution['up']['min'], solution['up']['max']),
-                       (solution['lo']['min'], solution['lo']['max']),
-                       (bias['min'], bias['max']))]
-        window.update(min=min(corners), max=max(corners))
-        window['typ_note'] = 'typ 为零偏置标称值；min/max 包含偏置电流'
         expected = check['expected']
         low = float(expected.get('min', float('-inf')))
         high = float(expected.get('max', float('inf')))
@@ -500,7 +495,12 @@ class Lint:
             f"{check['net']}: Vout typ={window['typ']:.6g}V, "
             f"window=[{window['min']:.6g}, {window['max']:.6g}]V, "
             f"要求=[{low:g}, {high:g}]V；{self._citation(check)}")
-        if window['min'] < low or window['max'] > high:
+        if 'bounds_exact' in window:
+            outside = (('min' in expected and Fraction(window['bounds_exact']['min']) < Fraction(str(expected['min'])))
+                       or ('max' in expected and Fraction(window['bounds_exact']['max']) > Fraction(str(expected['max']))))
+        else:
+            outside = window['min'] < low or window['max'] > high
+        if outside:
             self.add(
                 'Rule-08', '分压最坏情况窗口不满足要求', detail,
                 kind='FINDING', check_id=check['id'],
@@ -645,19 +645,35 @@ def main():
         help='audit_datasheets.py 产出的逐物料覆盖审计 JSON')
     ap.add_argument('--review-mode', choices=('first', 'revision'),
                     help='首审或复审；缺省取 intent.review_mode/first')
-    ap.add_argument('--old-db', help='复审旧版 db.json（用于执行计划准备度）')
+    ap.add_argument('--old-db', help='实际读取复审旧版 db.json 并生成变化清单')
+    ap.add_argument('--old-plan', help='上一设计版本最终计划；与本版 merge-plan 分开')
+    ap.add_argument('--revision-impact-json', help='另存改版影响与必需复验清单')
     ap.add_argument('--claims', help='历史评审断言 JSON（用于执行计划准备度）')
     ap.add_argument('--plan-json', help='单独写出 AC0 逐项执行计划 JSON')
+    ap.add_argument('--i2c-topology-json', help='另存本次计划中的 I2C 连接覆盖清单；不是电气判决')
+    ap.add_argument('--decoupling-json', help='另存本次计划中的去耦清单；不是电气判决')
+    ap.add_argument('--checker-json', action='append', default=[], metavar='ID=PATH',
+                    help='另存指定检查器的清单，可重复；不是电气判决')
+    ap.add_argument('--merge-plan', help='合入同版旧计划的补查项；结果仍在独立台账中复核')
     ap.add_argument('--json', help='把完整命中写入 JSON')
     a = ap.parse_args()
 
-    db = json.load(io.open(a.db, encoding='utf-8'))
-    log = io.open(a.log, encoding='utf-8', errors='replace').read() if a.log else ''
-    intent = json.load(io.open(a.intent, encoding='utf-8')) if a.intent else None
-    evidence = json.load(io.open(a.evidence, encoding='utf-8')) if a.evidence else None
-    datasheet_audit = (
-        json.load(io.open(a.datasheet_audit, encoding='utf-8'))
-        if a.datasheet_audit else None)
+    try:
+        db = load_json(a.db)
+        log = io.open(a.log, encoding='utf-8', errors='replace').read() if a.log else ''
+        intent = load_json(a.intent) if a.intent else None
+        evidence = load_json(a.evidence) if a.evidence else None
+        datasheet_audit = load_json(a.datasheet_audit) if a.datasheet_audit else None
+        previous_plan = load_json(a.merge_plan) if a.merge_plan else None
+        old_db = load_json(a.old_db) if a.old_db else None
+        old_plan = load_json(a.old_plan) if a.old_plan else None
+    except (OSError, ValueError) as error:
+        ap.error(str(error))
+    if a.intent and not isinstance(intent, dict):
+        ap.error('explicit intent.json root must be an object')
+    for supplied, value, label in ((a.old_db, old_db, '--old-db'), (a.old_plan, old_plan, '--old-plan')):
+        if supplied and not isinstance(value, dict):
+            ap.error(label + ' JSON root must be an object')
     intent_errors = validate_intent(intent)
     if intent_errors:
         sys.exit('[FATAL] intent.json 无效:\n  - ' + '\n  - '.join(intent_errors))
@@ -674,11 +690,20 @@ def main():
         if path and not os.path.isfile(path):
             sys.exit(f'[FATAL] {label} 文件不存在: {path}')
 
-    review_plan = build_review_plan(
-        db, intent, evidence, a.review_mode,
-        old_db_available=bool(a.old_db),
-        claims_available=bool(a.claims),
-        datasheet_audit=datasheet_audit)
+    try:
+        review_plan = build_review_plan(
+            db, intent, evidence, a.review_mode,
+            old_db_available=bool(a.old_db),
+            claims_available=bool(a.claims),
+            datasheet_audit=datasheet_audit, previous_plan=previous_plan,
+            old_db=old_db, old_plan=old_plan)
+    except ValueError as error:
+        sys.exit(f'[FATAL] {error}')
+    if a.revision_impact_json:
+        if 'revision_impact' not in review_plan:
+            ap.error('--revision-impact-json requires revision mode')
+        with open(a.revision_impact_json, 'w', encoding='utf-8') as stream:
+            json.dump(review_plan['revision_impact'], stream, ensure_ascii=False, indent=2, allow_nan=False)
     summary = review_plan['summary']
     print('=== AC0 检查适用性与执行计划 ===')
     print(f"  checks={summary['checks_total']}  "
@@ -689,6 +714,17 @@ def main():
         json.dump(review_plan, io.open(a.plan_json, 'w', encoding='utf-8'),
                   ensure_ascii=False, indent=2)
         print(f'  -> {a.plan_json}')
+    # 两个旧开关是通用导出的别名，走同一条路径，不另写一份导出代码
+    exports = (['i2c_topology=' + a.i2c_topology_json] if a.i2c_topology_json else []) \
+        + (['decoupling=' + a.decoupling_json] if a.decoupling_json else []) + a.checker_json
+    for spec in exports:
+        checker_id, _, path = spec.partition('=')
+        checker = REGISTRY_BY_ID.get(checker_id)
+        if checker is None or checker.plan_key not in review_plan or not path:
+            raise SystemExit('未知检查器或缺少输出路径: ' + spec)
+        with open(path, 'w', encoding='utf-8') as stream:
+            json.dump(review_plan[checker.plan_key], stream, ensure_ascii=False,
+                      indent=2, allow_nan=False)
 
     lint = Lint(db, log, intent, evidence, datasheet_audit)
     F = lint.run()
@@ -725,12 +761,12 @@ def main():
     print('\n=== 本趟未执行（0 条 ≠ 通过）===')
     for rid, name, why in lint.skipped:
         print(f'  {rid:12s} {name:32s} {why}')
-    for rid, name in HOT_RULES:
+    for rid, name in hot_rules():
         if rid not in lint.hot_executed:
             print(f'  {rid:12s} {name:32s} 未提供对应 ER1 结构化证据')
 
     if a.json:
-        pending = [list(item) for item in HOT_RULES
+        pending = [list(item) for item in hot_rules()
                    if item[0] not in lint.hot_executed]
         json.dump({'findings': F,
                    'check_results': lint.results,
@@ -739,7 +775,7 @@ def main():
                    'hot_executed': sorted(lint.hot_executed),
                    'hot_pending': pending,
                    'hot_uncovered_instances': [x['id'] for x in review_plan['checks']
-                       if x.get('rule') in HOT_RULE_IDS and x['readiness'] != 'READY'],
+                       if x.get('rule') in {r for r, _ in hot_rules()} and x['readiness'] != 'READY'],
                    'review_plan': review_plan,
                    'coverage': {
                        'pintype_available': bool(db.get('pintype')),

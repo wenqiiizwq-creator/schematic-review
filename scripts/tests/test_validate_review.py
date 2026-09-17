@@ -147,5 +147,158 @@ class ReviewGateTests(unittest.TestCase):
         self.assertTrue(validate_review(p, r, db)['valid'])
 
 
+def bound_fixture():
+    p, r, _ = fixture()
+    for check in p['checks']:
+        check.update(object={'audit': check['id']}, criterion='enumerate the declared audit scope')
+    p['checks'][0].update(object={'ref': 'U10', 'node': 'U10.4', 'net': 'EN',
+                                  'state': 'RUN', 'configuration': 'A'}, criterion='EN >= 2.0 V')
+    r['plan_digest'] = fingerprint(p)
+    r['binding_version'] = 1
+    for planned, result in zip(p['checks'], r['checks']):
+        result['binding'] = {k: copy.deepcopy(planned[k]) for k in ('object', 'criterion')}
+    return p, r
+
+
+def bound_fail(report, severity='P1'):
+    item = fail(report, severity)
+    report['findings'][0]['location'].update(refs=['R10', 'U10'], nets=['VIN', 'EN'])
+    return item
+
+
+class ReviewBindingTests(unittest.TestCase):
+    def test_complete_bound_ledger_can_release(self):
+        p, r = bound_fixture()
+        out = validate_review(p, r)
+        self.assertTrue(out['valid'], out)
+        self.assertEqual(out['release'], 'GO')
+        self.assertTrue(out['binding_validation']['enforced'])
+        self.assertEqual(out['binding_validation']['bound_checks'], len(p['checks']))
+
+    def test_legacy_report_remains_explicitly_unbound(self):
+        p, r, db = fixture()
+        out = validate_review(p, r, db)
+        self.assertTrue(out['valid'], out)
+        self.assertFalse(out['binding_validation']['enforced'])
+
+    def test_required_binding_cannot_be_disabled_by_omitting_version(self):
+        p, r, _ = fixture()
+        out = validate_review(p, r, require_bindings=True)
+        self.assertFalse(out['valid'])
+        self.assertEqual(out['release'], 'NO_GO')
+
+    def test_partial_binding_without_version_is_rejected(self):
+        p, r = bound_fixture(); del r['binding_version']
+        self.assertFalse(validate_review(p, r)['valid'])
+
+    def test_invalid_binding_versions_are_rejected(self):
+        for version in (True, False, 0, 2, '1', None, []):
+            with self.subTest(version=version):
+                p, r = bound_fixture(); r['binding_version'] = version
+                self.assertFalse(validate_review(p, r)['valid'])
+
+    def test_missing_binding_is_rejected(self):
+        p, r = bound_fixture(); del r['checks'][0]['binding']
+        self.assertFalse(validate_review(p, r)['valid'])
+
+    def test_object_ref_pin_net_state_and_configuration_must_match(self):
+        for field, value in [('ref', 'U11'), ('node', 'U10.5'), ('net', 'STRAP'),
+                             ('state', 'OFF'), ('configuration', 'B')]:
+            with self.subTest(field=field):
+                p, r = bound_fixture(); r['checks'][0]['binding']['object'][field] = value
+                self.assertFalse(validate_review(p, r)['valid'])
+
+    def test_criterion_mismatch_is_rejected_even_if_result_is_pass(self):
+        p, r = bound_fixture(); r['checks'][0]['binding']['criterion'] = 'STRAP <= 0.8 V'
+        self.assertFalse(validate_review(p, r)['valid'])
+
+    def test_malformed_binding_fails_closed(self):
+        for binding in (None, [], 'EN', {}, {'object': [], 'criterion': 'EN >= 2.0 V'},
+                        {'object': {}, 'criterion': None}):
+            with self.subTest(binding=binding):
+                p, r = bound_fixture(); r['checks'][0]['binding'] = binding
+                self.assertFalse(validate_review(p, r)['valid'])
+
+    def test_malformed_primary_coordinates_cannot_disable_anchors(self):
+        for field in ('ref', 'node', 'net'):
+            for value in ([], {}, 1, None, ''):
+                with self.subTest(field=field, value=value):
+                    p, r = bound_fixture(); bound_fail(r)
+                    p['checks'][0]['object'][field] = value
+                    r['checks'][0]['binding']['object'] = copy.deepcopy(p['checks'][0]['object'])
+                    r['plan_digest'] = fingerprint(p)
+                    self.assertFalse(validate_review(p, r)['valid'])
+
+    def test_changed_plan_cannot_reuse_old_binding_after_rehash(self):
+        p, r = bound_fixture(); p['checks'][0]['criterion'] = 'EN >= 2.2 V'
+        r['plan_digest'] = fingerprint(p)
+        self.assertFalse(validate_review(p, r)['valid'])
+
+    def test_unbound_plan_criterion_cannot_be_invented_by_result(self):
+        p, r = bound_fixture(); del p['checks'][0]['criterion']
+        r['plan_digest'] = fingerprint(p)
+        self.assertFalse(validate_review(p, r)['valid'])
+
+    def test_en_cannot_be_failed_by_strap_finding(self):
+        p, r = bound_fixture(); bound_fail(r)
+        r['findings'][0]['location'].update(refs=['U11', 'R12', 'R13'], nets=['VDD', 'STRAP'])
+        r['findings'][0]['criterion'] = 'STRAP <= 0.8 V'
+        r['checks'][0]['rationale'] = 'STRAP 0.845..0.910 V violates guaranteed LOW'
+        out = validate_review(p, r)
+        self.assertFalse(out['valid'])
+        self.assertTrue(any('U10' in x for x in out['errors']), out)
+        self.assertEqual(out['release'], 'NO_GO')
+
+    def test_primary_net_must_be_in_finding_location(self):
+        p, r = bound_fixture(); bound_fail(r)
+        r['findings'][0]['location']['nets'] = ['STRAP']
+        self.assertFalse(validate_review(p, r)['valid'])
+
+    def test_primary_node_owner_is_checked_without_ref(self):
+        p, r = bound_fixture(); del p['checks'][0]['object']['ref']
+        r['checks'][0]['binding']['object'] = copy.deepcopy(p['checks'][0]['object'])
+        r['plan_digest'] = fingerprint(p); bound_fail(r)
+        r['findings'][0]['location']['refs'] = ['U11']
+        self.assertFalse(validate_review(p, r)['valid'])
+
+    def test_upstream_cause_with_affected_target_is_allowed(self):
+        p, r = bound_fixture(); bound_fail(r)
+        p['checks'][0]['object']['refs'] = ['U10', 'U11', 'R10', 'J1']
+        r['checks'][0]['binding']['object'] = copy.deepcopy(p['checks'][0]['object'])
+        r['plan_digest'] = fingerprint(p)
+        out = validate_review(p, r)
+        self.assertTrue(out['valid'], out)
+        self.assertEqual(out['release'], 'NO_GO')
+
+    def test_requirement_aggregate_has_no_invented_physical_anchor(self):
+        p, r = bound_fixture(); bound_fail(r)
+        p['checks'][0]['object'] = {'requirement_id': 'REQ-EN'}
+        r['checks'][0]['binding']['object'] = copy.deepcopy(p['checks'][0]['object'])
+        r['plan_digest'] = fingerprint(p); r['coverage']['requirements'] = {'REQ-EN': ['C1']}
+        self.assertTrue(validate_review(p, r)['valid'])
+
+    def test_defect_cannot_link_a_pass_check(self):
+        p, r = bound_fixture(); bound_fail(r)
+        r['findings'][0]['check_ids'].append(r['checks'][1]['id'])
+        self.assertFalse(validate_review(p, r)['valid'])
+
+    def test_true_p0_is_not_removed_by_binding_validation(self):
+        p, r = bound_fixture(); bound_fail(r, 'P0')
+        out = validate_review(p, r)
+        self.assertTrue(out['valid'], out)
+        self.assertEqual(out['release'], 'NO_GO')
+        self.assertEqual(out['summary']['by_severity']['P0'], 1)
+
+    def test_insufficient_and_na_keep_existing_semantics(self):
+        p, r = bound_fixture()
+        r['checks'][0].update(review_result='INSUFFICIENT', evidence_confidence='C',
+                              missing_inputs=['guaranteed startup peak'], potential_severity='P1')
+        out = validate_review(p, r)
+        self.assertTrue(out['valid'], out); self.assertEqual(out['release'], 'NO_GO')
+        p, r = bound_fixture()
+        r['checks'][0].update(review_result='NA', applicability='NOT_APPLICABLE', applicability_evidence=E)
+        self.assertTrue(validate_review(p, r)['valid'])
+
+
 if __name__ == '__main__':
     unittest.main()

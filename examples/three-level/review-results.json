@@ -1,6 +1,6 @@
 {
   "schema_version": 3,
-  "plan_digest": "1fd141a70761a2798e6995d56acccc2d181ad41ef3a7635e9b6eab655c335e9b",
+  "plan_digest": "293c35fa8a6931e2a96b64f4174d04940fb524fc57ecd179efd38abd541c8dbe",
   "db_digest": "bf7a65fefe9a1400e30bb6b3c4e32d544bed9a3b001e51639bae18b8a8679a54",
   "checks": [
     {
@@ -18,6 +18,10 @@
       "blocking": false,
       "handoff": {
         "required": false
+      },
+      "binding": {
+        "object": {},
+        "criterion": "合成夹具已声明 chains 维度的范围与缺口；不代表真实电气通过。"
       }
     },
     {
@@ -35,6 +39,10 @@
       "blocking": false,
       "handoff": {
         "required": false
+      },
+      "binding": {
+        "object": {},
+        "criterion": "合成夹具已声明 datasheets 维度的范围与缺口；不代表真实电气通过。"
       }
     },
     {
@@ -52,6 +60,10 @@
       "blocking": false,
       "handoff": {
         "required": false
+      },
+      "binding": {
+        "object": {},
+        "criterion": "合成夹具已声明 history 维度的范围与缺口；不代表真实电气通过。"
       }
     },
     {
@@ -69,6 +81,10 @@
       "blocking": false,
       "handoff": {
         "required": false
+      },
+      "binding": {
+        "object": {},
+        "criterion": "合成夹具已声明 input_consistency 维度的范围与缺口；不代表真实电气通过。"
       }
     },
     {
@@ -86,6 +102,10 @@
       "blocking": false,
       "handoff": {
         "required": false
+      },
+      "binding": {
+        "object": {},
+        "criterion": "合成夹具已声明 requirements 维度的范围与缺口；不代表真实电气通过。"
       }
     },
     {
@@ -103,6 +123,10 @@
       "blocking": false,
       "handoff": {
         "required": false
+      },
+      "binding": {
+        "object": {},
+        "criterion": "合成夹具已声明 states 维度的范围与缺口；不代表真实电气通过。"
       }
     },
     {
@@ -123,7 +147,15 @@
       },
       "severity": "error",
       "finding_id": "F-101",
-      "blocking_reason": "合成规格中的工作范围已经违反，必须修改并复验。"
+      "blocking_reason": "合成规格中的工作范围已经违反，必须修改并复验。",
+      "binding": {
+        "object": {
+          "ref": "R1",
+          "net": "A",
+          "state": "SYNTHETIC_ONLY"
+        },
+        "criterion": "SYN-SPEC §1：接收端工作电压不得超过3.6V。"
+      }
     },
     {
       "id": "C2",
@@ -143,7 +175,15 @@
       },
       "severity": "warning",
       "finding_id": "F-102",
-      "blocking_reason": "合成测试规定：除error外，本项不属于当前冻结必需条件。"
+      "blocking_reason": "合成测试规定：除error外，本项不属于当前冻结必需条件。",
+      "binding": {
+        "object": {
+          "ref": "R1",
+          "net": "A",
+          "state": "SYNTHETIC_ONLY"
+        },
+        "criterion": "SYN-SPEC §2：本例指示通道需要外部恢复路径，不能按推挽驱动使用。"
+      }
     },
     {
       "id": "C3",
@@ -166,7 +206,15 @@
       "blocking_reason": "合成测试规定：除error外，本项不属于当前冻结必需条件。",
       "missing_inputs": [
         "受控负载上限"
-      ]
+      ],
+      "binding": {
+        "object": {
+          "ref": "R1",
+          "net": "A",
+          "state": "SYNTHETIC_ONLY"
+        },
+        "criterion": "SYN-SPEC §3：输入范围必须包含动态和温度变化。"
+      }
     },
     {
       "id": "C4",
@@ -186,7 +234,15 @@
       },
       "severity": "suggestion",
       "finding_id": "F-103",
-      "blocking_reason": "合成测试规定：除error外，本项不属于当前冻结必需条件。"
+      "blocking_reason": "合成测试规定：除error外，本项不属于当前冻结必需条件。",
+      "binding": {
+        "object": {
+          "ref": "R1",
+          "net": "A",
+          "state": "SYNTHETIC_ONLY"
+        },
+        "criterion": "SYN-SPEC §4：受控物料字段应能追溯到同一完整型号。"
+      }
     },
     {
       "id": "C5",
@@ -209,7 +265,15 @@
       "blocking_reason": "合成测试规定：除error外，本项不属于当前冻结必需条件。",
       "missing_inputs": [
         "完整订货后缀与封装版本"
-      ]
+      ],
+      "binding": {
+        "object": {
+          "ref": "R1",
+          "net": "A",
+          "state": "SYNTHETIC_ONLY"
+        },
+        "criterion": "SYN-SPEC §5：完整物料身份与封装应有受控出处。"
+      }
     },
     {
       "id": "C6",
@@ -227,7 +291,15 @@
       "handoff": {
         "required": false
       },
-      "blocking_reason": "合成测试规定：除error外，本项不属于当前冻结必需条件。"
+      "blocking_reason": "合成测试规定：除error外，本项不属于当前冻结必需条件。",
+      "binding": {
+        "object": {
+          "ref": "R1",
+          "net": "A",
+          "state": "SYNTHETIC_ONLY"
+        },
+        "criterion": "SYN-SPEC §6：电气判据已满足，文档可进一步清理。"
+      }
     }
   ],
   "findings": [
@@ -641,5 +713,6 @@
     "title": "合成示例：三等级报告",
     "baseline": "SYN-C Rev.1；全部数值与器件均为测试设定",
     "scope_note": "全部事实与判据为合成设定，展示报告契约；没有真实器件参数或真实网表分析结论。"
-  }
+  },
+  "binding_version": 1
 }

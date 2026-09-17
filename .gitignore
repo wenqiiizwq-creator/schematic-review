@@ -1,6 +1,9 @@
 # 内部真实项目报告——仅本地保留，不纳入版本管理、不公开
 examples-internal/
 
+# 本机工作流评审原始归档含内部路径和文件索引，仅在本地保留
+evals/workflow_bench/
+
 .DS_Store
 __pycache__/
 *.pyc

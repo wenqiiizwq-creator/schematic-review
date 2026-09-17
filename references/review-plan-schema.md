@@ -5,12 +5,23 @@
 
 ## 输入：intent.json
 
-最小示例：
+当前审查的合成输入示例（条件仅用于说明结构，不能移作真实设计依据）：
 
 ```json
 {
   "schema_version": 1,
   "review_mode": "first",
+  "requirements": [{
+    "id": "REQ-USB", "text": "提供一路 USB 设备接口",
+    "citation": "Requirements v1.2 section 4.1",
+    "criterion": "PHY 与连接器双向链路、供电及外部带电状态满足接口条件"
+  }],
+  "circuits": [{
+    "id": "USB-PORT", "domain": "USB_C",
+    "refs": ["U1", "J1"], "nets": ["USB_DP", "USB_DM", "VBUS"],
+    "states": ["startup", "run", "external-power-only"],
+    "citation": "Requirements v1.2 section 4.1; schematic page 2"
+  }],
   "expect": {
     "USB_PHY": 1
   },
@@ -55,28 +66,25 @@
   `UNDETERMINED`。
 - 旧版仅有 `expect` 的 intent 仍可使用。
 
-## 运行
+## 计划与结果交接
 
-```bash
-python3 scripts/plan_review.py db.json \
-  --intent intent.json \
-  --evidence evidence.json \
-  --datasheet-audit datasheet-audit.json \
-  --json review-plan.json
-```
+常规冷/热命令只在 [SKILL.md](../SKILL.md) 维护；单独生成计划时仍可用
+`plan_review.py db.json --intent intent.json --json review-plan.json`。
 
-也可由 lint 同步生成：
+- 冷跑通过 `lint --plan-json review-plan-cold.json` 同时保存计划和候选，人工补查项加入该计划。
+- 热跑通过 `--merge-plan review-plan-cold.json --plan-json review-plan.json` 产生最终计划。
+  合并要求 `db_sha256` 与当前电气输入一致，保留已有检查及人工补查项；相同 ID 的对象/判据或移交明细
+  不一致时拒绝自动覆盖，需明确处理冲突。旧版无指纹或输入已变时重建计划并逐项迁移补查项。
+- 匹配热证据后保留基础覆盖项，按 evidence ID 生成带 `parent_check_id` 的状态子项。
+  基础项只汇总覆盖，不能代替任何状态子项的结果；显式证据即使未命中命名启发式也会入计划。
+- 最终结果只绑定最终计划；后续补查先更新该计划，再更新 digest 和逐项结果。计划合并不读取
+  或迁移 review-results，已完成结果按当前判据重新核验，不能按基础 ID 自动复制给子项。
+- 冷/热 Lint JSON 自带当次计划快照；最终校验要求这些检查全部出现在最终计划，热候选必须
+  关联自己的状态子项。保存历史快照，不用最终计划覆盖它们。
 
-```bash
-python3 scripts/lint.py db.json \
-  --intent intent.json \
-  --evidence evidence.json \
-  --datasheet-audit datasheet-audit.json \
-  --plan-json review-plan.json \
-  --json lint-result.json
-```
-
-复审时增加 `--review-mode revision --old-db old-db.json --claims claims.json`。
+复审时增加 `--review-mode revision --old-db old-db.json --old-plan old-review-plan.json --claims claims.json`。
+新计划保存逐项依赖和当轮输入快照；变化关联、部分依赖扩大复验、历史消失项及结果绑定见
+[revision-impact-schema.md](revision-impact-schema.md)。旧文件“可用”的布尔值不代表已形成有效影响基线。
 
 ## 输出字段
 
@@ -111,30 +119,13 @@ python3 scripts/lint.py db.json \
 - 明确要求某功能但网表未发现特征时，计划新增
   `required-feature-presence` 检查，并报告 `REQUIRED_FEATURE_NOT_DETECTED`。
 
-## 结果与 HANDOFF
+## 结果、移交与准出
 
-结果状态只有四种：
+计划仅记录适用性和准备度；最终状态字段见 [review-results-schema.md](review-results-schema.md)，
+严重度和准出政策统一见 [severity-calibration.md](severity-calibration.md)，专业边界见
+[scope-boundary.md](scope-boundary.md)。READY 不代表 PASS；HANDOFF 独立于审查结果。
 
-- `PASS`：本项在原理图范围内有充分证据且满足判据。
-- `FAIL`：本项在原理图范围内有充分证据且不满足判据。
-- `INSUFFICIENT`：本项适用，但材料不足，无法定判。
-- `NA`：有依据证明本项不适用。
-
-`HANDOFF` 不是第五种结果。它记录原理图审查产生的下游约束，生命周期为
-`OPEN`、`ACCEPTED`、`VERIFIED`。例如差分链路的原理图连通性可以 `PASS`，同时
-其阻抗、等长与回流约束仍保持 `handoff.state=OPEN`，交 PCB Layout 验证。
-
-## 汇总准出
-
-先完成每个适用检查项的独立记录，再计算总体准出。总体准出至少要求：
-
-- 不存在未关闭的阻断级 `FAIL`；
-- 不存在阻断级 `INSUFFICIENT`；
-- 所有适用项均已执行或有书面接受；
-- 所有必需 handoff 已形成明确的接收方、约束和验证方法；
-- 复审时 Rule-17 的 Diff 与历史断言通过。
-
-## V2 补充
+## 需求与物理引脚覆盖
 
 `intent.requirements` 可选数组，每项必须含唯一 `id`、`text`、`citation`、`criterion`。
 例如 `{"id":"REQ-01","text":"两个用户接口","citation":"需求 A §3","criterion":"两路完整链路到连接器"}`。
@@ -151,7 +142,7 @@ validate_review.py，见 review-results-schema.md。热跑新计划不能覆盖�
 
 hot 检查的 READY 必须通过与 lint 相同的依赖函数：当前网表指纹、实际文档指纹、
 准确型号/版本/定位、依赖物料 AVAILABLE 以及该规则必要的模型输入。缺失或过期
-则 WAITING_EVIDENCE。每条匹配 evidence 生成独立 evidence_check_id 和 object.state；
+则 WAITING_EVIDENCE。每条匹配 evidence 生成独立 evidence_check_id、parent_check_id 和 object.state；
 匹配时 node/net/ref 必须一致。READY 不证明求解器支持该拓扑，也不代表 PASS。
 
 功能 feature 项是 coverage_parent，只汇总覆盖。agent 应从实际电路和需求填
@@ -170,10 +161,26 @@ intent.circuits，再按域内判据及状态展开。此扩展不声称自动�
 ```
 
 支持域：POWER_CONVERTER、POWER_PROTECTION、ANALOG、I2C、STARTUP、DDR、USB_C、
-CAN_RS485、CLOCK。每个具体电路、状态和判据形成独立检查，按 refs 获取各自资料，
+CAN_RS485、CLOCK，以及各检查器自带的 INDUCTIVE_LOAD、POWER_SWITCH、INPUT_FILTER、
+POWER_UP、SUPERVISION、DIFF_LEVELS、OPTOCOUPLER。每个具体电路、状态和判据形成独立
+检查，按 refs 获取各自资料，
 由 Expert Review 填公式、角点、证据、结果、意见和复验方法。无关器件缺资料不
 改变已声明电路的准备度。新增 refs 中需要曲线/额定的无源器件用 audit 的
 --require-ref 加入；不得用全局“datasheets available”掩盖逐物料缺口。
+
+I²C 另有有界的自动连接覆盖，输入 `intent.i2c_topology`、清单及状态迁移契约见
+[checkers.md](checkers.md) 的 I²C 一节。每连接区域新增覆盖和独立电气判据；
+不替代显式 `circuits` 或 Rule-09。计划中的清单需随 `--db` 重新校验，不能编辑清单消除缺口。
+
+去耦另有 `intent.decoupling` 与 `review-plan.decoupling`，完整输入和判定边界见
+[checkers.md](checkers.md) 的去耦一节。物理脚/装配/分组覆盖与电气判据分开，
+包含零电容、共享位号、未解析容量及直接网络边界；不从清单自动生成 PASS。
+新计划带 `decoupling_version: 1`，最终校验重建清单、对象和逐条要求，变更后须重新审查。
+
+其余检查器同一套结构：清单写在同名顶层键并带 `<id>_version`，计划项的 `object` 带
+`<id>` 与 `<id>_digest` 绑定清单摘要，`inventory_gaps` 保留该对象的缺口——有缺口就不能判
+PASS。检查器自带规则（IL/PS/IF/PU/SV/DL/OC 前缀）与 `Rule-NN` 并列进 `rule_plan`，热跑规则
+按证据实例化。逐检查器的识别范围、intent 段与边界见 [checkers.md](checkers.md)。
 
 电源来源与条件导通另可声明：
 

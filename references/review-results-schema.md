@@ -1,12 +1,15 @@
 # 最终审查台账 v3 与机器校验
 
-`review-plan.json` 是待办，不是结果。最终结果另存 `review-results.json`，保证每个计划 ID
-恰好一条结果；补查项先加入计划，再记录结果。`validate_review.py` 只验证记录的一致性，
+`review-plan.json` 是合入冷跑、热跑及人工补查项的最终计划，不是结果。合并命令见
+[SKILL.md](../SKILL.md)，交接规则见 [review-plan-schema.md](review-plan-schema.md)。
+最终结果另存 `review-results.json`，每个最终计划 ID 恰好一条结果；补查先入计划再记录结果。
+`validate_review.py` 只验证记录的一致性，
 不能验证来源文字是否真实、计算是否合理或审查判据是否穷尽。
 
 ## 顶层字段
 
 - `schema_version`: 3。v2只作历史兼容，新报告不使用旧等级。
+- `binding_version`: 新报告为1，逐检查声明已审对象/判据；旧报告可不填，仅用于兼容复核。
 - `remediation_version`: 新报告必须为1；要求每项finding包含详细`remediation`，字段及
   示例见 [remediation-guide.md](remediation-guide.md)。v3总是校验详细改法；旧v2报告可不填，仅用于兼容校验。
 - `plan_digest` / `db_digest`: Python `validate_review.fingerprint()` 对完整 JSON 对象排序并
@@ -18,6 +21,10 @@
   不是该域全部电气通过。完成了有据的缺口登记也可通过“枚举完整性”检查，实际缺证结论仍为 INSUFFICIENT。
 - `coverage`: 各维度“对象→检查 ID 数组”的完整映射。
 - `summary` / `release`: 可省略，由校验器计算；填了必须与计算一致。
+
+带新改版清单的复审另有 `revision_impact_version`、`revision_digest` 及必需项的
+`reverification`；完整字段与闸门见 [revision-impact-schema.md](revision-impact-schema.md)。
+它不迁移旧结论，不改变四态/分级/独立 HANDOFF；此模式自动强制 binding。
 
 有 `--db` 时机械检查 coverage 的 `components`（所有 parts）、`pins`（pin2net 与
 声明脚并集）、`nets`（去除已识别伪网）、`pages`（ref2page 的页号字符串），以及计划
@@ -32,6 +39,10 @@
 ```json
 {
   "id": "ER3.PATH.U1-J1",
+  "binding": {
+    "object": {"refs": ["U1", "J1"], "nets": ["SENSE_A", "SENSE_B"], "state": "RUN"},
+    "criterion": "RUN 时 U1.4 与 J1.1 必须导通"
+  },
   "applicability": "APPLICABLE",
   "review_result": "FAIL",
   "evidence_confidence": "A",
@@ -45,6 +56,17 @@
   "handoff": {"required": false}
 }
 ```
+
+`binding.object`、`binding.criterion` 是实际已审范围，与同 ID 最终计划的完整 object、criterion
+一致（包括配置/状态及列表内容）；上例须有对应计划，不能移植到其他检查。`evidence` 和
+`rationale` 归属于这个范围；复用前核对原始资料，不从计划盲填绑定字段后沿用无关结论。
+计划判据需非空。只改变 `plan_digest` 不能使旧对象/旧判据的结果自动有效。
+声明的主坐标 `object.ref/node/net` 必须是非空字符串；不能用数组、空值或错误类型隐藏锚点。
+
+声明 `binding_version: 1` 或传 `--require-bindings` 时执行严格校验；版本缺失、布尔值冒充1、
+部分条目缺绑定、对象/判据错配均拒绝。出现 binding 但省略版本也拒绝，不能隐式降级。
+旧报告未声明且未传该参数时保留兼容，输出 `binding_validation.enforced=false`；
+不能把这个兼容结果描述为通过新绑定门。
 
 枚举定义见 severity-calibration.md。PASS/FAIL 只能 A/B，INSUFFICIENT 必须 C 并给
 `missing_inputs`非空数组。FAIL/INSUFFICIENT都使用三等级severity、finding_id及双向链接，
@@ -76,6 +98,20 @@ IMPROVEMENT仅suggestion，实际判据必须已PASS；待核事项不能混为�
 全部条目放findings[]，不得另开未校验的risks[]。ID可延续F/R/I前缀，前缀不决定kind。
 severity_reason是逐项归类理由；仅改报告保留原ID、技术结果、证据及未决条件。
 
+严格绑定模式下，DEFECT 的每个 check_ids 都必须是该 finding 的 FAIL，不能夹带 PASS、
+INSUFFICIENT 或另一个 finding 的检查；同一根因仍可关联多个真正失败的判据。
+location 除根因件还要覆盖各被检查的主对象：计划 object.ref、object.node 所属位号、
+object.net，以及提供 --db 时该 node 的当前网络。要求精确位号/网络，不能用共同电源、
+同一 IC 的其他脚或宽泛功能组代替；refs/nets 数组中的背景对象不被强制全部列入发现定位。
+无明确物理主对象的需求/覆盖检查不虚构位号，也不由此获得物理绑定证明。
+
+例如，STRAP 缺陷可关联 STRAP 判据及其需求，不能挂到已经满足的 EN 判据；发现的
+定位不能只为消除报错而补入 EN。返回 EN 的连接、阈值及工况重判该行，STRAP 的 FAIL
+和必要阻断仍保留。装配/等效值与低电平/上升时间是独立判据，不能互相代判。
+
+这是声明一致性防错，不是自然语言证据判读器：虚假/过宽定位、伪造绑定、同一物理脚的
+错误数值/参数、引用文字与主张不符仍需工程复核；不得声称能自动识别所有语义错配。
+
 `recommendation`保留为总表摘要；`remediation`是可执行的逐项修改说明，不能相互替代。
 包含准备度、前提/取得方法、旧→新操作、连接端点、规格/依据、联动ID及编辑/计算验收。
 顶层声明`remediation_version: 1`时自动校验；`--require-actionable`要求声明存在，防止
@@ -87,19 +123,23 @@ severity_reason是逐项归类理由；仅改报告保留原ID、技术结果、
 正文用item_severity_counts统计全部ID的error/warning/suggestion，by_severity只统计DEFECT。
 不把多个 FAIL 行当多个致命项。历史修复/撤回记录放报告历史节，当前 findings 只保留当前项。
 
-    python3 scripts/validate_review.py review-plan.json review-results.json --db db.json --lint lint-cold.json --lint lint-hot.json --require-actionable --json review-gate.json
+    python3 scripts/validate_review.py review-plan.json review-results.json --db db.json --lint lint-cold.json --lint lint-hot.json --require-actionable --require-bindings --json review-gate.json
 
 退出 0 表示**台账格式/一致性有效**，即使板卡结论 NO_GO 也可正常交付报告；2 表示台账有错。
 CI/冻结门使用 `--require-release`，NO_GO 也退出 2。GO/CONDITIONAL_GO 仍须工程负责人核实。
 空计划、遗漏对象、C 写 PASS、NA 冲突、无位置/改法、虚假汇总和陈旧基线均被拒绝。
 `remediation_validation`报告是否启用详细改法校验及三类准备度数量；不计入缺陷严重度，
 也不把详细方案当已修复。脚本不能识别填满字段却仍含糊/错误的指令，Agent须逐步核对。
+`binding_validation` 报告是否启用绑定门及对象/判据一致的检查数；该数不是电气通过数。
 
 ## AC0 候选处置核对
 
 完整网表模式交付前用两次 `--lint` 提供冷/热完整 JSON；`lint_reviews` 数组每条含
 `run_digest=fingerprint(lint_json)` 与 `items`（从零开始的 finding 索引字符串→结果检查 ID 数组）。
-全部 FINDING/CANDIDATE/INFO 都有处置，不接受只复核前几项。没有热跑判据时保存运行了冷扫描
+全部 FINDING/CANDIDATE/INFO 都有处置，不接受只复核前几项。若 Lint 含 review_plan，
+其所有检查必须纳入最终计划且对象/判据保持一致；热候选还须关联 evidence_check_id 对应的
+状态子项，不能只挂到基础覆盖项。新生成的计划指纹必须匹配 --db；旧无快照的 Lint 仅兼容
+候选索引校验，不能声称核对了计划交接。没有热跑判据时保存运行了冷扫描
 但 hot_pending 未清的 lint-hot.json，相关缺证项仍为 INSUFFICIENT。
 不传 --lint 时校验器无法验证候选覆盖，不能声称通过此闸门。仅 PDF 模式明确 NA 并留依据。
 

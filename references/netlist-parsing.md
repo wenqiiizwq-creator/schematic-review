@@ -10,7 +10,8 @@
 | `pstchip.dat` | 原语库（型号/封装/参数值/引脚映射） | 同上 |
 | `netlist.log` | **导出日志——免费证据，勿丢** | 同上，与三件套同目录 |
 
-非 Cadence 工具链（PADS/Altium/KiCad）提供等效网表导出即可，解析规则按格式改写；方法论其余部分不变。
+非 Cadence 工具链（PADS/Altium 等）提供等效网表导出即可，解析规则按格式改写；方法论其余部分不变。
+KiCad 已随附解析器，见下文第六节。
 
 ## 二、目标索引
 
@@ -114,3 +115,42 @@ Cadence 的 `PIN_NUMBER` 可能是 BGA 字母数字脚号，且 `PINUSE` 与 `PI
 对真实 NC 标签与 No-connect 属性构建小样本/读图交叉验证，再允许依赖 pseudo_nets 排除。
 DNP/DNI/DNF/NC 只按分隔词识别为不贴，不能误判 NCP1117 型号。实际装配 BOM 优先核实，
 命名未标识也不证明一定贴装。
+
+## 六、KiCad 网表（kicadxml）
+
+    python3 scripts/parse_kicad.py 板子.kicad_sch -o db.json      # 自动调 kicad-cli 导出
+    python3 scripts/parse_kicad.py 已导出.xml -o db.json          # 或用手工导出的 kicadxml
+
+导出命令等价于 `kicad-cli sch export netlist --format kicadxml`；`kicad-cli` 路径可用
+`KICAD_CLI` 指定。导出失败时把 kicad-cli 原文抛出，不吞错继续。
+
+字段映射：
+
+| db 字段 | 来源 | 说明 |
+|---|---|---|
+| `nets` / `pin2net` | `<nets><net name><node ref pin>` | 网名保持 KiCad 原样（含 `Net-(...)`、层次路径） |
+| `pinname` | node 的 `pinfunction`，缺失回落 libpart 引脚名 | `~` 是 KiCad 的"无名"标记，按空处理，不伪造 |
+| `pintype` | node 的 `pintype` 基础类型 | input→IN、output→OUT、bidirectional→BI、tri_state→TRISTATE、power_in/out→POWER、passive/free→UNSPEC、open_collector→OCL、open_emitter→OCA；未知类型保留原文大写，不静默当 UNSPEC |
+| `parts[].prim` | `libsource` 的 `lib:part` | 相当于 Cadence 的 primitive 名 |
+| `parts[].part` | MPN 类字段（MPN/Manufacturer Part Number/Order Code…），否则 libsource 的 part | 符号名不是订货码，仍需 ER1 核身份 |
+| `parts[].jedec` | `<footprint>` | KiCad 的封装库项 |
+| `parts[].nc` | `<property name="dnp"/>` 或 VALUE 带 NC 标记 | `exclude_from_bom` 是 BOM 卫生标记，不作装配证据 |
+| `ref2page` | 组件 `sheetpath.names` 对应 `design/sheet` 的编号 | 层次页按导出顺序编号 |
+| `declared_pinname` / `declared_pintype` | libpart 的全部引脚 | 含网表里没出现的脚，用于官方脚表双向差集 |
+| `export_meta` | `design` 的 source/tool/date | 用于核对导出版本与 PDF 是否同版 |
+
+**三件事必须分清**（与 Cadence 流程一致）：
+
+1. KiCad 把带 No-connect 标记的引脚写成 `pintype="passive+no_connect"` 并单独放进
+   `unconnected-(...)` 网。这类网登记为 `pseudo_nets`，引脚另列 `no_connect_nodes`——
+   它是"图上声明不接"，仍需逐处核实该脚确实允许悬空。
+2. 没有 NC 标记却落在 `unconnected-(...)` 网里的引脚是**真悬空**，保持真实单节点网，
+   Rule-01 照常扫出，不被伪网络掩盖。
+3. `nc` 是装配状态，与上面两件事无关；逐装配变体仍需 intent 声明。
+
+检查器侧还有一层引脚名归一化（上划线、脚号装饰、序号、多功能合写），所以即使某个库
+把引脚名写成 `EN_12`、`G1`，识别也不依赖解析器单点修正；低有效标记一律保留。
+
+自检与 Cadence 解析器共用：重复归网、索引互反、缺失 libpart、引脚名覆盖率过低都会
+失败退出。KiCad 的无源件引脚名多为 `~`，覆盖率天然偏低，核对时按 IC 引脚看，
+不要用整体百分比代替逐脚核对。

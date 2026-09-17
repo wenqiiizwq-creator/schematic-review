@@ -8,6 +8,7 @@ import io
 import json
 from pathlib import Path
 from validate_review import SEVERITIES, validate_review
+from electrical_contract import load_json
 
 RANK = {s: i for i, s in enumerate(SEVERITIES)}
 STATE = {'OPEN': '尚未关闭', 'FIXED_VERIFIED': '已修复并复验',
@@ -22,10 +23,13 @@ def inline(value):
     return str(value).replace('\n', ' ').replace('|', '\\|')
 
 
-def render(plan, report, db=None, lint_runs=None):
+def render(plan, report, db=None, lint_runs=None, *, require_bindings=False,
+           old_db=None, old_plan=None, require_revision=False):
     if report.get('schema_version') != 3:
         raise ValueError('新报告只支持v3；旧台账须逐项重评，不能机械改标签。')
-    gate = validate_review(plan, report, db, lint_runs, require_actionable=True)
+    gate = validate_review(plan, report, db, lint_runs, require_actionable=True,
+                           require_bindings=require_bindings, old_db=old_db,
+                           old_plan=old_plan, require_revision=require_revision)
     if not gate['valid']:
         raise ValueError('台账未通过校验：' + '; '.join(gate['errors']))
     metadata = report.get('report_metadata', {})
@@ -128,6 +132,13 @@ def render(plan, report, db=None, lint_runs=None):
         raise ValueError('报告未能恰好展开每个条目一次。')
     lines += ['## 4. 索引与完整台账', '', '| 等级 | ID | 内容 |', '|---|---|---|']
     lines += ['| %s | %s | %s |' % (x['severity'], inline(x['id']), inline(x['title'])) for x in ordered]
+    binding = gate['binding_validation']
+    revision = gate['revision_validation']
+    lines += ['', '对象与判据绑定：' + (f"已校验 {binding['bound_checks']} 条声明；不代替证据原文复核。"
+              if binding['enforced'] else '历史兼容模式，未通过新绑定门。')]
+    if revision['enforced']:
+        lines += ['', f"改版复验：{revision['required_checks']} 条必需记录已校验；策略 {revision['strategy']}。",
+                  '逐项复验方法、当前输入摘要与证据见 review-results.json 的 reverification；记录一致不表示实物验证完成。']
     lines += ['', '完整逐项检查、覆盖、候选处置、版本指纹与独立交接保存在随附review-results.json和review-gate.json；计算与图面证据按条目路径回读。', '',
               '报告及校验通过不表示已经修改电路或完成实物验证。', '']
     output = io.StringIO()
@@ -141,16 +152,24 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('plan'); parser.add_argument('results')
     parser.add_argument('--db'); parser.add_argument('--lint', action='append')
+    parser.add_argument('--old-db'); parser.add_argument('--old-plan')
+    parser.add_argument('--require-bindings', action='store_true')
+    parser.add_argument('--require-revision-impact', action='store_true')
     parser.add_argument('--output', required=True); parser.add_argument('--csv', required=True)
     args = parser.parse_args()
-    read = lambda p: json.loads(Path(p).read_text(encoding='utf-8'))
+    read = load_json
     try:
         destinations = [Path(args.output).resolve(), Path(args.csv).resolve()]
-        inputs = [Path(p).resolve() for p in [args.plan, args.results, args.db, *(args.lint or [])] if p]
+        inputs = [Path(p).resolve() for p in [args.plan, args.results, args.db,
+                  args.old_db, args.old_plan, *(args.lint or [])] if p]
         if len(set(destinations)) != 2 or any(p in inputs for p in destinations):
             raise ValueError('输出路径必须彼此不同，且不能覆盖输入台账。')
         markdown, csv_text, gate = render(read(args.plan), read(args.results), read(args.db) if args.db else None,
-                                         [read(p) for p in args.lint] if args.lint else None)
+                                         [read(p) for p in args.lint] if args.lint else None,
+                                         require_bindings=args.require_bindings,
+                                         old_db=read(args.old_db) if args.old_db else None,
+                                         old_plan=read(args.old_plan) if args.old_plan else None,
+                                         require_revision=args.require_revision_impact)
         Path(args.output).write_text(markdown, encoding='utf-8')
         Path(args.csv).write_text(csv_text, encoding='utf-8-sig')
         print(json.dumps({'items':gate['summary']['items'], 'counts':gate['summary']['item_severity_counts']}, ensure_ascii=False))

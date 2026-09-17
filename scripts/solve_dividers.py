@@ -20,34 +20,43 @@ import json
 import math
 import re
 import sys
+from fractions import Fraction
+from itertools import product
 
 GNDS = {'GND', 'PGND', 'AGND', 'DGND', 'EGND'}
 RAIL_RE = re.compile(
     r'^(VCC|VBAT|VDD|VOUT|AVDD|DVDD|VIN|VBUS|3V3|5V|1V|2V|0V)', re.I)
+LINEAR_MAX_RESISTORS = 20
+LINEAR_MAX_VARIABLE_RESISTORS = 10
+LINEAR_MAX_NETS = 12
+
 FB_NAMES = {
     'FB', 'ADJ', 'VFB', 'FBX', 'VSENSE', 'VOSNS', 'VOUT_SENSE',
 }
 
 
-def parse_resistor(value, default_tol=None):
-    """解析电阻值，返回 {'kohm', 'tol'}；支持 4K7、2.49K、0R、1M0。"""
+def parse_resistor(value, default_tol=None, exact=False):
+    """解析 R/K/M 与公差；exact=True 另保留原始十进制的 Ω/公差分数。"""
     raw = str(value or '').strip()
     upper = raw.upper().replace('Ω', 'R')
     leading_unit = re.match(r'^([RKM])(\d+)', upper)
     embedded = re.match(r'^(\d+)([RKM])(\d+)', upper)
     if leading_unit:
-        number = float(f'0.{leading_unit.group(2)}')
+        decimal_number = f'0.{leading_unit.group(2)}'
+        number = float(decimal_number)
         unit = leading_unit.group(1)
         end = leading_unit.end()
     elif embedded:
-        number = float(f'{embedded.group(1)}.{embedded.group(3)}')
+        decimal_number = f'{embedded.group(1)}.{embedded.group(3)}'
+        number = float(decimal_number)
         unit = embedded.group(2)
         end = embedded.end()
     else:
         normal = re.match(r'^(\d+(?:\.\d+)?)\s*([RKM]?)', upper)
         if not normal:
             return None
-        number = float(normal.group(1))
+        decimal_number = normal.group(1)
+        number = float(decimal_number)
         unit = normal.group(2)
         end = normal.end()
     remainder = upper[end:]
@@ -61,7 +70,12 @@ def parse_resistor(value, default_tol=None):
     tol = float(tol_match.group(1)) / 100.0 if tol_match else (float(default_tol) if default_tol is not None else None)
     if tol is not None and (not math.isfinite(tol) or tol < 0 or tol >= 1):
         return None
-    return {'kohm': number * scale, 'tol': tol}
+    result = {'kohm': number * scale, 'tol': tol}
+    if exact:
+        result['ohm_exact'] = str(Fraction(decimal_number) * {'R': 1, '': 1, 'K': 1000, 'M': 1000000}[unit])
+        result['tol_exact'] = (str(Fraction(tol_match.group(1)) / 100) if tol_match
+                               else str(Fraction(str(default_tol))) if default_tol is not None else None)
+    return result
 
 
 def r_kohm(value):
@@ -132,6 +146,153 @@ def divider_window(solution, vref_typ, vref_min=None, vref_max=None):
     }
 
 
+
+def _exact(value):
+    """Preserve the stated decimal parameter, not a binary rounding artifact."""
+    return value if isinstance(value, Fraction) else Fraction(str(value))
+
+
+def _linear_coefficients(network, ohms):
+    """Exact Dirichlet LDL^T solve: Vfb = gain*Vsource - Rth*Ibias.
+
+    Positive resistor stamps produce a symmetric positive-definite grounded
+    matrix. Rational factorization avoids accepting a small residual with a
+    large forward error near a decision threshold. It does not import the
+    benchmark oracle or use its inverse-feedback Gaussian elimination.
+    """
+    source, reference, fbnet = (network[k] for k in ('source_net', 'reference_net', 'fbnet'))
+    unknown = sorted(set(network['nets']) - {source, reference})
+    index = {net: i for i, net in enumerate(unknown)}
+    n = len(unknown)
+    ohms = list(map(_exact, ohms))
+    if not ohms or any(r <= 0 for r in ohms):
+        raise ValueError('角点阻值必须为有限正数')
+    if max(ohms) / min(ohms) > 10 ** 10:
+        raise ValueError('电阻动态范围超过节点求解资源边界')
+    zero = Fraction(0)
+    matrix = [[zero] * n for _ in range(n)]
+    drive = [zero] * n
+    for resistor, resistance in zip(network['resistors'], ohms):
+        a, b = resistor['nets']
+        conductance = 1 / resistance
+        for node, other in ((a, b), (b, a)):
+            if node not in index:
+                continue
+            i = index[node]
+            matrix[i][i] += conductance
+            if other in index:
+                matrix[i][index[other]] -= conductance
+            elif other == source:
+                drive[i] += conductance
+    lower = [[zero] * n for _ in range(n)]
+    diagonal = [zero] * n
+    for i in range(n):
+        lower[i][i] = Fraction(1)
+        for j in range(i):
+            lower[i][j] = (matrix[i][j] - sum(lower[i][k] * diagonal[k] * lower[j][k]
+                                            for k in range(j))) / diagonal[j]
+        diagonal[i] = matrix[i][i] - sum(lower[i][k] ** 2 * diagonal[k] for k in range(i))
+        if diagonal[i] <= 0:
+            raise ValueError('节点矩阵奇异或未接参考边界')
+
+    def solve(rhs):
+        y, x = [zero] * n, [zero] * n
+        for i in range(n):
+            y[i] = rhs[i] - sum(lower[i][j] * y[j] for j in range(i))
+        for i in range(n - 1, -1, -1):
+            x[i] = y[i] / diagonal[i] - sum(lower[j][i] * x[j] for j in range(i + 1, n))
+        if any(sum(matrix[i][j] * x[j] for j in range(n)) != rhs[i] for i in range(n)):
+            raise ValueError('节点方程精确残差不为零')
+        return x
+
+    response = solve(drive)
+    injection = [zero] * n
+    injection[index[fbnet]] = Fraction(1)
+    impedance = solve(injection)
+    gain, rth = response[index[fbnet]], impedance[index[fbnet]]
+    if (not Fraction(1, 10 ** 10) < gain <= 1 or rth <= 0
+            or any(v < 0 or v > 1 for v in response)):
+        raise ValueError('反馈节点缺少可靠源控制或无源模型无效')
+    return gain, rth
+
+
+def _finite_float(value):
+    try:
+        converted = float(value)
+    except OverflowError as error:
+        raise ValueError('节点输出超出有限数值范围') from error
+    if not math.isfinite(converted):
+        raise ValueError('节点输出超出有限数值范围')
+    return converted
+
+
+def _outward_float(value, upper):
+    converted = _finite_float(value)
+    if (upper and Fraction.from_float(converted) < value
+            or not upper and Fraction.from_float(converted) > value):
+        converted = math.nextafter(converted, math.inf if upper else -math.inf)
+    if not math.isfinite(converted):
+        raise ValueError('节点输出不能转换为有限外包络')
+    return converted
+
+
+def linear_feedback_window(network, vref, bias):
+    """Bound a fully specified positive-resistance network at all box vertices.
+
+    For each conductance separately, the inverse-feedback output is a
+    linear-fractional function (a rank-one network update). With a connected
+    positive network its denominator does not cross zero; each coordinate
+    extremum is at an endpoint. Vref and FB bias enter affinely. Thus all
+    independent resistor/Vref/bias endpoint combinations bound this DC model.
+    Resource limits reject rather than sample/truncate. Exact fraction bounds
+    decide acceptance; floating report bounds are rounded outward.
+    """
+    if (not isinstance(vref, dict) or not isinstance(bias, dict)
+            or not all(isinstance(x, (int, float)) and not isinstance(x, bool) and math.isfinite(x)
+                       for x in (vref.get('min'), vref.get('typ'), vref.get('max'),
+                                 bias.get('min'), bias.get('max')))
+            or not 0 < vref['min'] <= vref['typ'] <= vref['max']
+            or bias['min'] > bias['max']):
+        raise ValueError('Vref 或输入偏置缺少有限保证范围')
+    resistors = network['resistors']
+    if not 1 <= len(resistors) <= LINEAR_MAX_RESISTORS or len(network['nets']) > LINEAR_MAX_NETS:
+        raise ValueError('节点求解限于 20 颗电阻和 12 个网络，超限不抽样放行')
+    if len({r['ref'] for r in resistors}) != len(resistors):
+        raise ValueError('节点模型重复计入同一电阻')
+    if any(r['tol'] is None for r in resistors):
+        raise ValueError('电阻公差缺失；不能生成节点分析保证窗口')
+    options = [sorted({_exact(r.get('ohm_exact', r['ohm'])) * (1 - _exact(r.get('tol_exact', r['tol']))),
+                       _exact(r.get('ohm_exact', r['ohm'])) * (1 + _exact(r.get('tol_exact', r['tol'])))})
+               for r in resistors]
+    if sum(len(values) > 1 for values in options) > LINEAR_MAX_VARIABLE_RESISTORS:
+        raise ValueError('超过 10 颗非零公差电阻，禁止抽样代替全角')
+    extrema, exact_bounds = {'min': None, 'max': None}, {}
+    count = 0
+    for ohms in product(*options):
+        gain, rth = _linear_coefficients(network, ohms)
+        for voltage, current in product(sorted({_exact(vref['min']), _exact(vref['max'])}),
+                                        sorted({_exact(bias['min']), _exact(bias['max'])})):
+            value = (voltage + rth * current) / gain
+            count += 1
+            corner = {'value': _finite_float(value), 'value_exact': str(value),
+                      'vref_v': float(voltage), 'bias_current_a': float(current),
+                      'resistance_ohm': {r['ref']: float(ohm) for r, ohm in zip(resistors, ohms)},
+                      'resistance_ohm_exact': {r['ref']: str(ohm) for r, ohm in zip(resistors, ohms)}}
+            for key, better in (('min', lambda a, b: a < b), ('max', lambda a, b: a > b)):
+                if key not in exact_bounds or better(value, exact_bounds[key]):
+                    exact_bounds[key], extrema[key] = value, corner
+    gain, _ = _linear_coefficients(network, [r.get('ohm_exact', r['ohm']) for r in resistors])
+    return {'typ': _finite_float(_exact(vref['typ']) / gain),
+            'min': _outward_float(exact_bounds['min'], False), 'max': _outward_float(exact_bounds['max'], True),
+            'bounds_exact': {k: str(v) for k, v in exact_bounds.items()},
+            'method': 'linear-nodal-dc', 'arithmetic': 'exact-rational-LDLt',
+            'corner_count': count, 'extreme_corners': extrema,
+            'resistors': resistors, 'source_net': network['source_net'],
+            'reference_net': network['reference_net'],
+            'typ_note': 'typ 为零偏置标称值；min/max 包含偏置电流且向外舍入，判据使用精确分数',
+            'scope': '有限正电阻网络、单一理想源/参考地、FB 集总输入偏置；非线性/启动/稳定性另查'}
+
+
 class Solver:
     def __init__(self, db, default_tol=None, max_depth=8, model=None):
         self.nets = db['nets']
@@ -145,6 +306,7 @@ class Solver:
         self.model = model or {}
         self.issues = []
         self.start_net = None
+        self.db_pseudo = db.get('pseudo_nets', [])
 
     def ends(self, ref):
         if ref not in self._ends:
@@ -261,6 +423,68 @@ class Solver:
             'path_up': self._display_paths(upper),
             'path_lo': self._display_paths(ground),
         }
+
+
+    def linear_network(self, fbnet):
+        """Collect all internal branches once; explicit source/reference stop traversal."""
+        source, reference = (self.model.get(k) for k in ('source_net', 'reference_net'))
+        if (not all(isinstance(net, str) and net.strip() for net in (source, reference, fbnet))
+                or len({source, reference, fbnet}) != 3):
+            raise ValueError('FB、源端和参考地必须为三个不同的显式网络')
+        if any(net not in self.nets for net in (source, reference, fbnet)):
+            raise ValueError('声明的 FB/源/参考网络不存在')
+        pseudo = set(self.db_pseudo)
+        pending, visited, resistors, required = [fbnet], set(), {}, set()
+        ignored = self.model.get('ignored_nodes', {})
+        while pending:
+            net = pending.pop()
+            if net in visited:
+                continue
+            visited.add(net)
+            if len(visited) > LINEAR_MAX_NETS:
+                raise ValueError('节点求解超过 12 个网络，禁止截断')
+            if net in pseudo:
+                raise ValueError(f'{net}: 伪网不能进入节点模型')
+            if net in (source, reference):
+                continue
+            if net != fbnet and (net in GNDS or RAIL_RE.match(net)):
+                raise ValueError(f'{net}: 未声明的电源/参考边界')
+            for node in self.nets[net]:
+                ref = node.split('.')[0]
+                part = self.parts.get(ref)
+                if part is None or self.pin2net.get(node) != net:
+                    raise ValueError(f'{node}: 元件/网络索引不一致')
+                if part.get('nc'):
+                    continue
+                if not re.match(r'^R[0-9]', ref):
+                    allowed = (ignored.get(node) and
+                               (re.match(r'^C[0-9]', ref) or
+                                (net == fbnet and re.match(r'^(U|M)[0-9]', ref))))
+                    if not allowed:
+                        raise ValueError(f'{node}: 未建模的非电阻支路/输入负载')
+                    required.add(ref)
+                    continue
+                if ref in resistors:
+                    continue
+                pins = [pin for pin in self.pin2net if pin.startswith(ref + '.')]
+                ends = self.ends(ref)
+                if (len(pins) != 2 or len(ends) != 2 or net not in ends
+                        or any(pin not in self.nets.get(self.pin2net[pin], []) for pin in pins)):
+                    raise ValueError(f'{ref}: 电阻必须恰有两个有效物理脚和两个端点')
+                value = parse_resistor(part.get('value'), self.default_tol, exact=True)
+                if not value or not math.isfinite(value['kohm'] * 1000) or value['kohm'] <= 0:
+                    raise ValueError(f'{ref}: 只支持可解析的严格正电阻')
+                resistors[ref] = {'ref': ref, 'nets': ends, 'ohm': value['kohm'] * 1000, 'tol': value['tol'],
+                                  'ohm_exact': value['ohm_exact'], 'tol_exact': value['tol_exact']}
+                required.add(ref)
+                if len(resistors) > LINEAR_MAX_RESISTORS:
+                    raise ValueError('节点求解超过 20 颗电阻，禁止截断')
+                pending.extend(ends)
+        if source not in visited or reference not in visited:
+            raise ValueError('反馈网络未连接到声明的源和参考地')
+        return {'fbnet': fbnet, 'source_net': source, 'reference_net': reference,
+                'nets': sorted(visited), 'resistors': [resistors[r] for r in sorted(resistors)],
+                'required_refs': sorted(required)}
 
     @staticmethod
     def _display_paths(paths):

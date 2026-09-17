@@ -1,0 +1,35 @@
+{
+  "version": "circuit-bench-1.0",
+  "case_count": 166,
+  "case_digest": "5addda6a8fc2f0cee5d78d96b06ea86354befa365ccc101ea782aaeba171bdbb",
+  "answer_digest": "43fdd3c63b3ef3f5d245e069b462ae42fcc04d4cb9116225915811fcf05fc697",
+  "generator_sources": {
+    "generate.py": "b9c0148b173a94f576ddfb4b064cc09a4d36e72387d2e347eb858cfb23d20118",
+    "oracle.py": "cd1f133877cafca73e1fd67b651b03b0647ced76c472be0f5af042c7f0b4c6a5"
+  },
+  "split_counts": {
+    "dev": 90,
+    "holdout": 58,
+    "challenge": 18
+  },
+  "status_counts": {
+    "PASS": 19,
+    "FAIL": 62,
+    "INSUFFICIENT": 85
+  },
+  "family_splits": {
+    "feedback_two_resistors": "dev",
+    "feedback_series_lower": "dev",
+    "feedback_parallel_series": "holdout",
+    "feedback_bridge": "challenge",
+    "pull_parallel_1": "dev",
+    "pull_parallel_2": "dev",
+    "pull_parallel_3": "holdout",
+    "rc_charge": "dev",
+    "rc_discharge": "holdout",
+    "ti_slva689_example": "holdout"
+  },
+  "synthetic_or_reconstructed_only": true,
+  "holdout_policy": "Whole topology/source families. Public, not a secret test or security boundary.",
+  "scope": "Native resistor checks and supplied-voltage decision checks; no complete schematic review."
+}

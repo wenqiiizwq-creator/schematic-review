@@ -282,7 +282,11 @@ class ElectricalSafetyTests(unittest.TestCase):
                                'refs': ['U1'], 'states': ['cold', 'hot'], 'citation': 'synthetic requirement'}]}
         self.assertEqual(validate_intent(intent), [])
         plan = build_review_plan(db, intent, evidence, datasheet_audit=audit)
-        hot = [x for x in plan['checks'] if x['check'] == 'feedback-divider-wca']
+        group = [x for x in plan['checks'] if x['check'] == 'feedback-divider-wca']
+        hot = [x for x in group if x.get('evidence_check_id')]
+        parents = [x for x in group if x.get('role') == 'coverage_parent']
+        self.assertEqual(len(parents), 1)
+        self.assertEqual({x['parent_check_id'] for x in hot}, {parents[0]['id']})
         self.assertEqual({x['object']['state'] for x in hot}, {'cold', 'hot'})
         domain = [x for x in plan['checks'] if x.get('domain') == 'POWER_CONVERTER']
         self.assertEqual(len(domain), 8)

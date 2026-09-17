@@ -36,8 +36,32 @@ def document_fingerprint(path):
 
 
 def finite(value):
-    return (isinstance(value, (int, float)) and not isinstance(value, bool)
-            and math.isfinite(value))
+    if not isinstance(value, (int, float)) or isinstance(value, bool):
+        return False
+    try:
+        return math.isfinite(value)
+    except OverflowError:
+        return False
+
+
+def _unique_object(pairs):
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError(f'JSON 重复字段: {key}')
+        result[key] = value
+    return result
+
+
+def _invalid_constant(value):
+    raise ValueError(f'JSON 不接受非有限常量: {value}')
+
+
+def load_json(path):
+    """Shared raw-input gate: ambiguity must not disappear before hashing."""
+    with open(path, encoding='utf-8') as stream:
+        return json.load(stream, object_pairs_hook=_unique_object,
+                         parse_constant=_invalid_constant)
 
 
 def bounded(value, positive=False):
@@ -50,17 +74,33 @@ def dependency_refs(db, check):
     """Mandatory target devices plus explicitly declared parameter dependencies.
 
 Do not fan out over a large supply rail. Extra devices on intermediate branches
-must be declared in depends_on by the analysis; the topology solver separately
-rejects unmodelled loads.
+must be declared in depends_on. The bounded Rule-08 linear fallback additionally
+extracts all resistor/ignored-load dependencies for both planning and execution;
+unsupported topology still belongs to the solver's INSUFFICIENT result.
     """
     refs = set(check.get('depends_on') or [])
     if check.get('ref'):
         refs.add(check['ref'])
     if check.get('node'):
         refs.add(check['node'].split('.')[0])
+    request = check.get('vref_request')
+    if isinstance(request, dict) and isinstance(request.get('ref'), str) and request['ref']:
+        refs.add(request['ref'])
     net = check.get('net') or db.get('pin2net', {}).get(check.get('node'))
     refs.update(node.split('.')[0] for node in db.get('nets', {}).get(net, [])
                 if re.match(r'^(U|M|Q|D)\d', node, re.I))
+    if check.get('rule') == 'Rule-08' and isinstance(check.get('divider_model'), dict):
+        # Keep planning and hot execution aligned for the newly supported
+        # linear networks. Stop at explicit source/reference boundaries.
+        from solve_dividers import Solver
+        solver = Solver(db, default_tol=check.get('resistor_tolerance'), model=check['divider_model'])
+        try:
+            if solver.solve_net(net).get('status') != 'ok':
+                refs.update(solver.linear_network(net)['required_refs'])
+        except ValueError:
+            # Unsupported topology stays the solver's INSUFFICIENT outcome;
+            # retain all user-declared dependencies even when extraction fails.
+            pass
     return sorted(refs)
 
 
@@ -145,6 +185,10 @@ def model_gaps(check):
             threshold = 'vih_min_v' if required == 'high' else 'vil_max_v'
             if not finite(check.get(threshold)):
                 gaps.append(f'{threshold} 保证门限缺失')
+    else:
+        checker = _registry_hot().get(rule)
+        if checker is not None:
+            gaps.extend(checker[1].model_gaps(check))
     return gaps
 
 
@@ -170,8 +214,14 @@ def check_matches(db, check, rule, obj):
     return shared
 
 
-def readiness_gaps(db, check, audit, db_sha256=None):
-    gaps = dependency_gaps(db, check, audit, db_sha256) + model_gaps(check)
+def coordinate_gaps(db, check):
+    """One physical-coordinate gate for fact materialization, plan and lint."""
+    gaps = []
+    for key in ('node', 'net', 'ref'):
+        if check.get(key) and not isinstance(check[key], str):
+            gaps.append(f'{key} 必须为字符串')
+    if gaps:
+        return gaps
     for key, table in (('node', 'pin2net'), ('net', 'nets'), ('ref', 'parts')):
         if check.get(key) and check[key] not in db.get(table, {}):
             gaps.append(f'{key} 未匹配当前网表: {check[key]}')
@@ -184,8 +234,24 @@ def readiness_gaps(db, check, audit, db_sha256=None):
     return gaps
 
 
+def readiness_gaps(db, check, audit, db_sha256=None):
+    from datasheet_facts import vref_binding_gaps
+    return list(dict.fromkeys(coordinate_gaps(db, check)
+                + dependency_gaps(db, check, audit, db_sha256) + model_gaps(check)
+                + vref_binding_gaps(db, check, audit)))
+
 
 HOT_RULE_IDS = {'Rule-08', 'Rule-09', 'Rule-12', 'Rule-14', 'Rule-16'}
+
+
+def _registry_hot():
+    """注册表在导入时才需要，延迟取用以免与 checkers 形成导入环。"""
+    from checkers import registry_hot_rules
+    return registry_hot_rules()
+
+
+def hot_rule_ids():
+    return HOT_RULE_IDS | set(_registry_hot())
 
 def validate_evidence(evidence):
     """验证 ER1 结构化证据；拒绝让残缺判据静默进入热跑。"""
@@ -197,7 +263,7 @@ def validate_evidence(evidence):
             return None
         try:
             parsed = float(value)
-        except (TypeError, ValueError):
+        except (TypeError, ValueError, OverflowError):
             return None
         return parsed if math.isfinite(parsed) else None
 
@@ -236,7 +302,8 @@ def validate_evidence(evidence):
             errors.append(f'{label} 必须为 object')
             continue
         rule = check.get('rule')
-        if not isinstance(rule, str) or rule not in HOT_RULE_IDS:
+        registry = _registry_hot()
+        if not isinstance(rule, str) or (rule not in HOT_RULE_IDS and rule not in registry):
             errors.append(f'{label}.rule 不支持: {rule!r}')
         check_id = check.get('id')
         if not text_value(check_id):
@@ -247,6 +314,14 @@ def validate_evidence(evidence):
             seen_ids.add(check_id)
         if not text_value(check.get('citation')):
             errors.append(f'{label}.citation 缺失（需文档/版本/页码或表号）')
+        if 'vref_request' in check or 'vref_binding' in check:
+            if rule != 'Rule-08':
+                errors.append(f'{label}: Vref facts 仅支持 Rule-08')
+            request = check.get('vref_request')
+            if not isinstance(request, dict) or not text_value(request.get('ref')) or not isinstance(request.get('conditions'), dict):
+                errors.append(f'{label}.vref_request 需要 ref 和 conditions object')
+            if 'vref_binding' in check and not isinstance(check['vref_binding'], dict):
+                errors.append(f'{label}.vref_binding 必须为 object')
         for field in ('basis', 'divider_model', 'voltage_analysis'):
             if field in check and not isinstance(check[field], dict):
                 errors.append(f'{label}.{field} 必须为 object')
@@ -269,6 +344,13 @@ def validate_evidence(evidence):
                         errors.append(f'{label}.basis.sources.ref 必须为位号字符串')
                     else:
                         refs.append(ref)
+                    if 'vref_request' in check or 'vref_binding' in check:
+                        for field in ('mpn', 'package'):
+                            if field in source and not text_value(source[field]):
+                                errors.append(f'{label}.basis.sources.{field} 必须为非空字符串')
+                        if 'parameter_locators' in source and (not isinstance(source['parameter_locators'], dict)
+                                or not all(text_value(k) and text_value(v) for k, v in source['parameter_locators'].items())):
+                            errors.append(f'{label}.basis.sources.parameter_locators 必须为字符串键值表')
                 if len(refs) != len(set(refs)):
                     errors.append(f'{label}.basis.sources.ref 重复')
         if finite(check.get('abs_min_v')) and finite(check.get('abs_max_v')) and check['abs_min_v'] > check['abs_max_v']:
@@ -296,12 +378,19 @@ def validate_evidence(evidence):
             'Rule-14': {'pin_map'},
             'Rule-16': {'strap'},
         }
+        for checker_rule, (_, checker) in registry.items():
+            kind_by_rule[checker_rule] = set(checker.evidence_kinds.get(checker_rule, ()))
         expected_kind = kind_by_rule.get(rule, set()) if isinstance(
             rule, str) else set()
         if not isinstance(kind, str) or kind not in expected_kind:
             errors.append(f'{label}.kind={kind!r} 与 {rule} 不匹配')
+        if isinstance(rule, str) and rule in registry:
+            if not (text_value(check.get('net')) or text_value(check.get('node'))
+                    or text_value(check.get('ref'))):
+                errors.append(f'{label} 必须给 node/net/ref 之一')
+            errors.extend(registry[rule][1].evidence_errors(check, label))
         if rule == 'Rule-08':
-            for key in ('net', 'vref', 'expected'):
+            for key in ('net', 'expected') + (() if 'vref_request' in check else ('vref',)):
                 if key not in check:
                     errors.append(f'{label}.{key} 缺失')
             if not text_value(check.get('net')):
@@ -323,7 +412,7 @@ def validate_evidence(evidence):
                         parsed_vref['min'] <= parsed_vref['typ']
                         <= parsed_vref['max']):
                     errors.append(f'{label}.vref 必须满足 min <= typ <= max')
-            elif number(vref) is None or number(vref) <= 0:
+            elif not ('vref_request' in check and 'vref' not in check) and (number(vref) is None or number(vref) <= 0):
                 errors.append(f'{label}.vref 必须为有限正数或 object')
             if not isinstance(check.get('expected'), dict):
                 errors.append(f'{label}.expected 必须为 object')
@@ -372,7 +461,9 @@ if __name__ == '__main__':
     parser.add_argument('db')
     parser.add_argument('--document', action='append', default=[])
     args = parser.parse_args()
-    with open(args.db, encoding='utf-8') as stream:
-        result = {'db_sha256': db_fingerprint(json.load(stream))}
+    try:
+        result = {'db_sha256': db_fingerprint(load_json(args.db))}
+    except (OSError, ValueError) as error:
+        parser.error(str(error))
     result['documents'] = {p: document_fingerprint(p) for p in args.document}
     print(json.dumps(result, ensure_ascii=False, indent=2))
