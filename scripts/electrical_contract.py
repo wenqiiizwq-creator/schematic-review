@@ -83,6 +83,12 @@ unsupported topology still belongs to the solver's INSUFFICIENT result.
         refs.add(check['ref'])
     if check.get('node'):
         refs.add(check['node'].split('.')[0])
+    if check.get('rule') == 'PN-10' and isinstance(check.get('model'), dict):
+        model = check['model']
+        if isinstance(model.get('components'), dict):
+            refs.update(model['components'])
+        if isinstance(model.get('boundaries'), dict):
+            refs.update(n.split('.')[0] for n in model['boundaries'])
     request = check.get('vref_request')
     if isinstance(request, dict) and isinstance(request.get('ref'), str) and request['ref']:
         refs.add(request['ref'])
@@ -195,6 +201,11 @@ def model_gaps(check):
 def check_matches(db, check, rule, obj):
     if check.get('rule') != rule:
         return False
+    if rule == 'PN-10' and obj.get('passive_networks'):
+        if (check.get('network_id') != obj['passive_networks']
+                or check.get('inventory_digest') != obj.get('passive_networks_digest')
+                or (check.get('basis') or {}).get('state') != obj.get('state')):
+            return False
     # Every supplied coordinate must agree; a shared net cannot override a wrong pin.
     if not any(check.get(k) for k in ('node', 'net', 'ref')):
         return False

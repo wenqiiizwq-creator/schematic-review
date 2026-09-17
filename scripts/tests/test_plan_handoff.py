@@ -11,6 +11,7 @@ SCRIPTS = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(SCRIPTS))
 from electrical_fixtures import bind_evidence, pin_analysis
 from decoupling import input_fingerprint
+from checkers.coverage_base import input_fingerprint as coverage_fingerprint
 from plan_review import build_review_plan
 from validate_review import fingerprint, validate_review, SCOPE
 from test_validate_review import E
@@ -41,11 +42,20 @@ class PlanHandoffTests(unittest.TestCase):
         # These fixtures deliberately model only a signal input, not IC supply pins.
         # Declare that limited synthetic model instead of automatically passing a
         # new unresolved physical-device inventory. Frozen circuit data is untouched.
-        return {'decoupling': {'schema_version': 1, 'input_sha256': input_fingerprint(self.db),
+        context = {'decoupling': {'schema_version': 1, 'input_sha256': input_fingerprint(self.db),
             'states': [{'id': 'synthetic-signal-only', 'citation': 'Stipulated input-only test model',
                         'population': {r: True for r in self.db['parts']}}],
             'components': {'U1': {'kind': 'other',
                 'citation': 'Synthetic one-pin input stub; no supply terminal modeled in this ledger-handoff test'}}}}
+        for key in ('connector_esd', 'passive_networks'):
+            context[key] = {'schema_version': 1, 'input_sha256': coverage_fingerprint(self.db),
+                'states': [{'id': 'synthetic-signal-only', 'citation': 'Stipulated fixture population',
+                            'population': {r: True for r in self.db['parts']}}],
+                'discovery_citation': 'Synthetic fixture contains only the stated IC stub and optional series resistor; no connector.'}
+        context['passive_networks']['exclusions'] = {r: {
+            'reason': 'Series-resistance requirement is checked by the explicit Rule-09 fixture; no RC/LC stage.',
+            'citation': 'Stipulated ledger-handoff test scope'} for r in self.db['parts'] if r.startswith('R')}
+        return context
 
     def merged(self, previous=None):
         return build_review_plan(self.db, self.inventory_context(), evidence=self.evidence, datasheet_audit=self.audit,

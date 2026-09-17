@@ -1,5 +1,10 @@
 # 上游能力移植记录 — 2026-09-17
 
+后续本机实现：按用户要求新增 [逐针ESD与通用无源工作流](connector-esd-passive-workflow.md)，
+独立实现ES-01/PN-01/PN-10并接入原清单/证据/结果校验；借鉴kicad-happy相关审查思路，
+未复制其源码或引入PCB能力。完整电源树/负载枚举本次不扩展。以下9类为先前移植范围，
+当前注册表共11类；本次的合成测试和真实网表冷扫描不等于完整电路检出率证明。
+
 本地框架基线为 wenqiiizwq-creator/schematic-review 的 `972e7eb`；
 功能来源为 foxsheep1214/schematic-review 的 `a5371bfa0e50a7f6a13e620c52eda14b31815b4b`，
 对照 `3cd88df` 之后的增量整合。保留仓库 MIT 许可及原作者声明。

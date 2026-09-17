@@ -1,7 +1,7 @@
 # 检查器：共用契约与逐项说明
 
 检查器从现有 `db.json` 发现对象、登记逐状态清单并生成审查计划。它们不是 EDA 解析器、
-不是电气求解器，也不产生准出结论。加一个检查器只需新增模块并登记到
+部分检查器调用有界电气计算器，但不产生整板准出结论。加一个检查器只需新增模块并登记到
 `scripts/checkers/__init__.py` 的 `REGISTRY`，计划、lint 与校验都按注册表遍历。
 
 ## 共用契约
@@ -66,6 +66,13 @@ python3 scripts/lint.py db.json --checker-json <checker-id>=inventory.json
 
 **规则编号**：检查器自带规则用检查器前缀，01–09 为冷跑、10 起为热跑，与既有 `Rule-NN` 并存
 且互不改写。
+
+## 逐针 ESD 与通用无源网络（2026-09-17补充）
+
+注册表新增 `connector_esd`（ES-01）与 `passive_networks`（PN-01/PN-10），共11类。
+详见 [逐针覆盖、intent/evidence、计算边界和修改复验](connector-esd-passive-workflow.md)。
+两张清单覆盖当前输入、声明脚/NC与状态，按摘要绑定每个物理脚/电路。未分类器件和未归属无源件
+保留对账任务；无保护器件、无自动候选或参数缺失不能写PASS。图面/资料核对仍由Agent执行。
 
 ## I²C 连接覆盖（`i2c_topology`）
 

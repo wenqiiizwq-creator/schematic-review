@@ -1,5 +1,8 @@
 # ER1 热跑证据契约（schema_version=1，V2.1 保留电气扩展）
 
+新增 PN-10（passive_ac）的完整字段、实际网表绑定、源/负载、公差及ESR/DCR规则见
+[逐针ESD与无源工作流](connector-esd-passive-workflow.md)。结果台账仍为schema 3；本文件的1是证据版本。
+
 旧 JSON 可读取；缺少新依赖、保证范围或状态时不执行热跑，输出逐项
 INSUFFICIENT。不自动填 1% 电阻公差、零 Vref 误差、零偏置电流或稳态采样。
 数值必须有限，min≤max；每项 id 唯一、citation 可定位。热跑结果不是整板准出。

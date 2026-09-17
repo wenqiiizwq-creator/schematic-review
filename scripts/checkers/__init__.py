@@ -16,6 +16,8 @@ from .optocoupler import OptocouplerChecker
 from .power_switch import PowerSwitchChecker
 from .power_up import PowerUpChecker
 from .supervision import SupervisionChecker
+from .connector_esd import ConnectorESDChecker
+from .passive_networks import PassiveNetworksChecker
 
 REGISTRY = (
     I2CTopologyChecker(),
@@ -27,6 +29,8 @@ REGISTRY = (
     SupervisionChecker(),
     DiffLevelsChecker(),
     OptocouplerChecker(),
+    ConnectorESDChecker(),
+    PassiveNetworksChecker(),
 )
 
 REGISTRY_BY_ID = {checker.id: checker for checker in REGISTRY}
