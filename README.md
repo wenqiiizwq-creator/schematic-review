@@ -3,6 +3,9 @@
 面向硬件原理图首审、冻结前审查、PDF更新复审与历史意见闭环的可复用 Agent skill。
 V2.2 将逐脚/网表审查、原厂证据、工况与参数计算，整理成能按步骤修改和复验的报告。
 
+本skill仅面向硬件原理图，不接入PCB/Gerber、布局布线、DRC或SCH-PCB跨文件审查。
+HANDOFF仅记录下游约束；[能力与自动化边界](references/capability-boundary.md)区分已有脚本、Agent工程任务和自动化缺口。
+
 严重程度只用 **error / warning / suggestion**。物料二义、封装文字与Value对应、
 库字段和一般资料整理默认列suggestion；已经证实的实际焊盘/接线错误仍按电气后果判断。
 每项说明归类依据，未知后果不当成已确认故障，样机一次成功不覆盖保证范围违规。

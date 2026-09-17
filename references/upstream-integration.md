@@ -35,3 +35,4 @@ Circuit Bench的166项主要覆盖Rule-08/09/16；新增6类热规则尚无独�
 
 `docs/specs/`中的上游设计记录为历史资料，当前命令、等级与结果字段以SKILL.md和references为准。
 `kicad-happy`在本次任务中下载、分析和独立试验；没有将其整套工具或PCB/生产准出职责并入本skill。
+后续吸收范围也仅限原理图；不引入PCB/Gerber、SCH-PCB跨文件核对及布局布线审查。
